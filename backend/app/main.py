@@ -11,6 +11,8 @@ from .utils import extract_sections_from_tei
 from pydantic import BaseModel
 from typing import Optional
 
+GROBID_URL = os.getenv("GROBID_API_BASE_URL", "https://cloud.grobid.org/api")
+
 app = FastAPI()
 
 # CORS middleware for local development
@@ -33,7 +35,7 @@ async def health():
 
 @app.get("/grobid/isalive")
 async def grobid_isalive():
-    resp = requests.get("http://localhost:8070/api/isalive", timeout=5)
+    resp = requests.get(f"{GROBID_URL}/isalive", timeout=5)
     if resp.status_code == 200 and "true" in resp.text.lower():
         return {"grobid": "alive"}
     raise HTTPException(status_code=502, detail="GROBID is not responding")
@@ -47,7 +49,7 @@ async def grobid_process(file: UploadFile = File(...)):
     try:
         with open(tmp_path, "rb") as f:
             resp = requests.post(
-                "http://localhost:8070/api/processFulltextDocument",
+                f"{GROBID_URL}/processFulltextDocument",
                 files={"input": (file.filename, f, "application/pdf")}
             )
         if resp.status_code == 200:
@@ -95,6 +97,7 @@ async def summarize(request: SummarizeRequest):
                         "   - どのように実施されるのか簡潔に補足し、",
                         "   - 当該分野における背景や意義も踏まえて解説し、",
                         "3) 要約文には適宜改行を入れて、読みやすいレイアウトにしてください。"
+                        "4) 原文のレファレンスの番号は要約にも反映させてください。",
                     ])
                 },
                 {"role": "user", "content": request.text},
