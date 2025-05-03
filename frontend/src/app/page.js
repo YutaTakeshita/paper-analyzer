@@ -44,7 +44,7 @@ export default function Home() {
     form.append('file', file)
     try {
       const res = await axios.post(
-        'http://127.0.0.1:8000/grobid/parse',
+        `${process.env.NEXT_PUBLIC_API_BASE}/grobid/parse`,
         form
       )
       // Link citation numbers to References section anchors
@@ -69,7 +69,7 @@ export default function Home() {
     setLoadingSummaries(prev => ({ ...prev, [name]: true }))
     try {
       const res = await axios.post(
-        'http://127.0.0.1:8000/summarize',
+        `${process.env.NEXT_PUBLIC_API_BASE}/summarize`,
         { text }
       )
       setSummaries(prev => ({ ...prev, [name]: res.data.summary }))
@@ -85,7 +85,7 @@ export default function Home() {
     setLoadingAudio(prev => ({ ...prev, [name]: true }))
     try {
       const res = await axios.post(
-        'http://127.0.0.1:8000/tts',
+        `${process.env.NEXT_PUBLIC_API_BASE}/tts`,
         { text },
         { responseType: 'blob' }
       )
