@@ -1,7 +1,10 @@
+# SSL warning suppression for requests
 import os
 import requests
 import openai
 import boto3
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # Load environment variables from a .env file for local development
 from dotenv import load_dotenv
 load_dotenv()
@@ -35,7 +38,7 @@ async def health():
 
 @app.get("/grobid/isalive")
 async def grobid_isalive():
-    resp = requests.get(f"{GROBID_URL}/isalive", timeout=5)
+    resp = requests.get(f"{GROBID_URL}/isalive", timeout=5, verify=False)
     if resp.status_code == 200 and "true" in resp.text.lower():
         return {"grobid": "alive"}
     raise HTTPException(status_code=502, detail="GROBID is not responding")
@@ -50,7 +53,8 @@ async def grobid_process(file: UploadFile = File(...)):
         with open(tmp_path, "rb") as f:
             resp = requests.post(
                 f"{GROBID_URL}/processFulltextDocument",
-                files={"input": (file.filename, f, "application/pdf")}
+                files={"input": (file.filename, f, "application/pdf")},
+                verify=False
             )
         if resp.status_code == 200:
             return {"tei": resp.text}
