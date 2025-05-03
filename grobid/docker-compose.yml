@@ -1,0 +1,11 @@
+services:
+  grobid:
+    platform: "linux/amd64"
+    image: lfoppiano/grobid:0.7.0
+    container_name: grobid
+    ports:
+      - "8070:8070"
+    volumes:
+      - ./grobid-home:/home/grobid/grobid-home
+    environment:
+      GROBID_PDF_PROCESSOR_MEMORY: "2G"
