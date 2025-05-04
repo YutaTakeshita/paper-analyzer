@@ -12,7 +12,7 @@ server:
   # HTTP connector for application traffic
   applicationConnectors:
     - type: http
-      port: ${PORT:-8070}
+      port: $PORT
 
   # HTTP connector for admin/health checks
   adminConnectors:
