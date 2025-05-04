@@ -1,7 +1,13 @@
 FROM lfoppiano/grobid:0.7.2
 USER root
-# Install envsubst for runtime configuration substitution
-RUN apt-get update && apt-get install -y gettext-base
+ # Install envsubst and curl
+RUN apt-get update && apt-get install -y gettext-base curl
+
+# Download PDFalto binary and place it under grobid-home/pdfalto/lin-64
+RUN mkdir -p /opt/grobid/grobid-home/pdfalto/lin-64 && \
+    curl -L https://github.com/pdfalto/pdfalto/releases/download/v0.4.0/pdfalto-0.4.0-linux-x86_64.tar.gz \
+      | tar xvz -C /opt/grobid/grobid-home/pdfalto/lin-64 --strip-components=1 && \
+    chmod +x /opt/grobid/grobid-home/pdfalto/lin-64/pdfalto
 WORKDIR /opt/grobid
 
 # Copy full grobid-home directory (config, models, tmp)
