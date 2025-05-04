@@ -13,5 +13,5 @@ RUN chmod +x /opt/grobid/grobid-service/bin/grobid-service
 # Expose the default GROBID port
 EXPOSE 8070
 
-# Substitute PORT into the YAML and start GROBID service
-ENTRYPOINT ["/bin/sh", "-c", "envsubst < /opt/grobid/grobid-home/config/grobid.yaml > /opt/grobid/grobid-home/config/runtime-config.yaml && exec /opt/grobid/grobid-service/bin/grobid-service server /opt/grobid/grobid-home/config/runtime-config.yaml"]
+# Set default PORT if not provided, substitute into YAML, and start GROBID service
+ENTRYPOINT ["/bin/sh", "-c", "export PORT=${PORT:-8070} && envsubst < /opt/grobid/grobid-home/config/grobid.yaml > /opt/grobid/grobid-home/config/runtime-config.yaml && exec /opt/grobid/grobid-service/bin/grobid-service server /opt/grobid/grobid-home/config/runtime-config.yaml"]
