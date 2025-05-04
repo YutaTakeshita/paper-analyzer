@@ -9,7 +9,10 @@ grobid:
 
   # PDF processing settings (required to locate the pdfalto binary)
   pdf:
-    pdfaltoPath: "/opt/grobid/grobid-service/lib/pdfalto"
+    pdfalto:
+      path: "/opt/grobid/grobid-service/lib/pdfalto"
+      memoryLimitMb: 4096
+      timeoutSec: 60
 
 # GROBID Dropwizard configuration
 server:
