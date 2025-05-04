@@ -1,4 +1,3 @@
-# SSL warning suppression for requests
 import os
 import requests
 import openai
@@ -14,9 +13,13 @@ from .utils import extract_sections_from_tei
 from pydantic import BaseModel
 from typing import Optional
 
+import logging
+
 GROBID_URL = os.getenv("GROBID_API_BASE_URL", "https://cloud.grobid.org")
 
 app = FastAPI()
+logger = logging.getLogger("uvicorn.error")
+logger.info(f"Using GROBID_URL={GROBID_URL}")
 
 # CORS middleware for local development
 app.add_middleware(
@@ -38,7 +41,7 @@ async def health():
 
 @app.get("/grobid/isalive")
 async def grobid_isalive():
-    resp = requests.get(f"{GROBID_URL}/api/isalive", timeout=5, verify=False)
+    resp = requests.get(f"{GROBID_URL}/api/isalive", timeout=5)
     if resp.status_code == 200 and "true" in resp.text.lower():
         return {"grobid": "alive"}
     raise HTTPException(status_code=502, detail="GROBID is not responding")
@@ -54,10 +57,11 @@ async def grobid_process(file: UploadFile = File(...)):
             resp = requests.post(
                 f"{GROBID_URL}/api/processFulltextDocument",
                 files={"input": (file.filename, f, "application/pdf")},
-                verify=False
             )
         if resp.status_code == 200:
             return {"tei": resp.text}
+        logger = logging.getLogger("uvicorn.error")
+        logger.error(f"GROBID returned status {resp.status_code}: {resp.text}")
         raise HTTPException(status_code=502, detail=f"GROBID process error: {resp.status_code}")
     except requests.RequestException as e:
         raise HTTPException(status_code=502, detail=f"GROBID connection error: {e}")
