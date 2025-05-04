@@ -10,7 +10,7 @@ grobid:
   # PDF processing settings (required to locate the pdfalto binary)
   pdf:
     pdfalto:
-      path: "/opt/grobid/grobid-service/bin/pdfalto"
+      path: "/usr/bin/pdfalto"
       memoryLimitMb: 4096
       timeoutSec: 60
 
