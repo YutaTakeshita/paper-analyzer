@@ -3,7 +3,7 @@ USER root
 WORKDIR /opt/grobid
 
 # Copy full grobid-home directory (config, models, tmp)
-COPY COPY grobid-home /opt/grobid/grobid-home
+COPY grobid-home /opt/grobid/grobid-home
 
 # Ensure the grobid-service binary is executable
 RUN chmod +x /opt/grobid/grobid-service/bin/grobid-service

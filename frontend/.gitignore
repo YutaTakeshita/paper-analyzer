@@ -44,6 +44,3 @@ node_modules/
 out/
 .env.local
 npm-debug.log*
-
-# macOS Finder metadata
-**/.DS_Store
