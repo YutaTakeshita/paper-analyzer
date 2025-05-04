@@ -13,4 +13,4 @@ EXPOSE 8070
 
 # Start the service, passing the config path; allow PORT override via environment
 ENTRYPOINT ["/opt/grobid/grobid-service/bin/grobid-service"]
-CMD ["server", "/opt/grobid/grobid-home/config/grobid.yaml", "--port", "${PORT:-8070}"]
+CMD ["server", "/opt/grobid/grobid-home/config/grobid.yaml"]
