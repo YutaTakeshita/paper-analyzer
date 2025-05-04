@@ -7,6 +7,10 @@ grobid:
   tempPath: "/opt/grobid/grobid-home/tmp"
   nativelibrary: "lib"
 
+  # PDF processing settings (required to locate the pdfalto binary)
+  pdf:
+    pdfaltoPath: "/opt/grobid/grobid-service/lib/pdfalto"
+
 # GROBID Dropwizard configuration
 server:
   # HTTP connector for application traffic
