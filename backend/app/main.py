@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import openai
 import boto3
@@ -12,7 +13,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from .utils import extract_sections_from_tei
 from pydantic import BaseModel
 from typing import Optional
-
 import logging
 
 GROBID_URL = os.getenv("GROBID_API_BASE_URL", "https://cloud.grobid.org")
@@ -41,10 +41,26 @@ async def health():
 
 @app.get("/grobid/isalive")
 async def grobid_isalive():
-    resp = requests.get(f"{GROBID_URL}/api/isalive", timeout=5)
-    if resp.status_code == 200 and "true" in resp.text.lower():
-        return {"grobid": "alive"}
-    raise HTTPException(status_code=502, detail="GROBID is not responding")
+    # Cold start や一時的な遅延に備えてリトライを行う
+    for attempt in range(3):
+        try:
+            # タイムアウトを 30 秒に延長
+            resp = requests.get(f"{GROBID_URL}/api/isalive", timeout=30)
+            resp.raise_for_status()
+            if "true" in resp.text.lower():
+                return {"grobid": "alive"}
+            raise HTTPException(status_code=502, detail="Unexpected response from GROBID")
+        except requests.exceptions.RequestException as e:
+            # 最大 3 回まで、2 秒待って再試行
+            if attempt < 2:
+                time.sleep(2)
+                continue
+            # すべて失敗したら 502 を返却
+            logger.error(f"Error in /grobid/isalive after retries: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=502,
+                detail=f"GROBID service unavailable: {e}"
+            )
 
 @app.post("/grobid/process")
 async def grobid_process(file: UploadFile = File(...)):
@@ -60,7 +76,6 @@ async def grobid_process(file: UploadFile = File(...)):
             )
         if resp.status_code == 200:
             return {"tei": resp.text}
-        logger = logging.getLogger("uvicorn.error")
         logger.error(f"GROBID returned status {resp.status_code}: {resp.text}")
         raise HTTPException(status_code=502, detail=f"GROBID process error: {resp.status_code}")
     except requests.RequestException as e:
@@ -79,8 +94,6 @@ async def grobid_parse(file: UploadFile = File(...)):
             sections = {"FullText": tei_xml}
         return {"sections": sections}
     except Exception as e:
-        import traceback, logging
-        logger = logging.getLogger("uvicorn.error")
         logger.error("Error in grobid_parse:", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -104,7 +117,7 @@ async def summarize(request: SummarizeRequest):
                         "   - その方法や手法、統計処理が何を目的としたものか、",
                         "   - どのように実施されるのか簡潔に補足し、",
                         "   - 当該分野における背景や意義も踏まえて解説し、",
-                        "3) 要約文には適宜改行を入れて、読みやすいレイアウトにしてください。"
+                        "3) 要約文には適宜改行を入れて、読みやすいレイアウトにしてください。",
                         "4) 原文のレファレンスの番号は要約にも反映させてください。",
                     ])
                 },
