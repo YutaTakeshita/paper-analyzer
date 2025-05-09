@@ -1,0 +1,27 @@
+# まず全体を無視
+**
+
+# ────────────────────
+# イメージ作成に必要なファイルだけ除外
+# ────────────────────
+!Dockerfile
+!build.image.sh
+
+# GROBID one-jar
+!grobid-service/build/libs/*.jar
+
+# 設定ファイル
+!grobid-home/config/grobid.yaml
+
+# モデル一式
+!grobid-home/models/**
+
+# pdfaltoバイナリ
+!grobid-home/pdfalto/**
+
+# スクリプト
+!scripts/**
+
+# ignore ファイル自身
+!.gitignore
+!.dockerignore

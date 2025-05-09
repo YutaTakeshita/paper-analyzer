@@ -1,17 +1,31 @@
-FROM lfoppiano/grobid:0.7.2
+###############################################################################
+# GROBID 0.8.0  (arm64 pdfalto 同梱版)  Cloud Run / Apple Silicon 用
+###############################################################################
+FROM --platform=linux/arm64 lfoppiano/grobid:0.8.0
 USER root
-# Install envsubst for runtime configuration substitution
-RUN apt-get update && apt-get install -y gettext-base
-WORKDIR /opt/grobid
 
-# Copy full grobid-home directory (config, models, tmp)
-COPY grobid-home /opt/grobid/grobid-home
+# ---- 1. arm64 版 pdfalto_server 取得（Science‑Miner 公開ビルド）
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
+    curl -L -o /usr/local/bin/pdfalto_server \
+      https://github.com/Science-Miner/pdfalto/releases/download/v0.5/pdfalto_server-0.5-linux-aarch64 && \
+    chmod +x /usr/local/bin/pdfalto_server && \
+    ln -sf /usr/local/bin/pdfalto_server /usr/local/bin/pdfalto
 
-# Ensure the grobid-service binary is executable
-RUN chmod +x /opt/grobid/grobid-service/bin/grobid-service
+# ---- 2. JVM オプション：pdfalto の場所を統一
+ENV PORT=8070
+ENV JAVA_TOOL_OPTIONS="-Xms512m -Xmx2g \
+  -Dorg.grobid.config=/opt/grobid/grobid-home/config/grobid.yaml \
+  -Dgrobid.pdf.pdfalto.path=/usr/local/bin/pdfalto_server \
+  -Dorg.grobid.pdf2xml.path=/usr/local/bin/pdfalto_server \
+  -Ddw.server.applicationConnectors[0].port=${PORT} \
+  -Ddw.server.adminConnectors[0].port=8071"
 
-# Expose the default GROBID port
-EXPOSE 8070
+EXPOSE ${PORT}
 
-# Substitute PORT into the YAML and start GROBID service
-ENTRYPOINT ["/bin/sh", "-c", "envsubst < /opt/grobid/grobid-home/config/grobid.yaml > /opt/grobid/grobid-home/config/runtime-config.yaml && exec /opt/grobid/grobid-service/bin/grobid-service server /opt/grobid/grobid-home/config/runtime-config.yaml"]
+# ---- 3. 追加のモデルや設定をコピーしたい場合はここで
+# COPY grobid-home/models /opt/grobid/grobid-home/models
+# COPY grobid-home/config/grobid.yaml /opt/grobid/grobid-home/config/grobid.yaml
+
+# ---- 4. 0.8.0 には grobid ラッパースクリプトが入っている
+ENTRYPOINT ["/opt/grobid/grobid-service/bin/grobid-service", "server", "/opt/grobid/grobid-home/config/grobid.yaml"]

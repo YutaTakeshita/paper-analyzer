@@ -1,33 +1,19 @@
 grobid:
-  service:
-    log:
-      level: DEBUG
-  grobidHome: "/opt/grobid/grobid-home"
-  modelPath: "/opt/grobid/grobid-home/models"
-  tempPath: "/opt/grobid/grobid-home/tmp"
-  nativelibrary: "lib"
-
-  # PDF processing settings (required to locate the pdfalto binary)
   pdf:
     pdfalto:
-      path: "/opt/grobid/grobid-home/pdfalto/lin-64/pdfalto"
-      memoryLimitMb: 4096
-      timeoutSec: 60
+      # 実行可能なバイナリへの絶対パス（必須）
+      path: "/usr/local/bin/pdfalto_server"
+      # 必要に応じて調整
+      memoryLimitMb: 6096
+      timeoutSec: 120
 
-# GROBID Dropwizard configuration
 server:
-  # HTTP connector for application traffic
   applicationConnectors:
     - type: http
-      port: $PORT
-
-  # HTTP connector for admin/health checks
+      port: ${PORT:-8070}     # 環境変数 PORT があればそちらを、なければ 8070 を使う
   adminConnectors:
     - type: http
       port: 8071
 
 logging:
-  level: DEBUG               # Global root logger at DEBUG level
-  loggers:
-    io.grobid.service: DEBUG  # Debug logs for GROBID service components
-    org.grobid.service: DEBUG
+  level: INFO    # デフォルトのままでも可
