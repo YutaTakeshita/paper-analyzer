@@ -13,13 +13,10 @@ RUN apt-get update \
       libpoppler-dev \
       libfreetype6-dev \
       libfontconfig1-dev \
-      ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-# 作業ディレクトリを設定
+# PDFalto のソースをクローンし、依存スクリプトを実行（install_deps.sh 内の sudo はすべて削除済み）
 WORKDIR /opt/pdfalto
-
-# PDFalto のソースをクローンし、依存スクリプトを実行（sudo を削除）
 RUN git clone --recursive https://github.com/kermitt2/pdfalto.git . \
  && chmod +x install_deps.sh \
  && ./install_deps.sh
@@ -27,18 +24,19 @@ RUN git clone --recursive https://github.com/kermitt2/pdfalto.git . \
 # ビルドディレクトリでコンパイル
 RUN mkdir build && cd build \
  && cmake .. \
- && make -j"$(nproc)" \
- && cp pdfalto_server /usr/local/bin/pdfalto_server
+ && make -j"$(nproc)"
+
+# ビルド済みバイナリを次ステージにコピーしやすい場所へ配置
+RUN cp build/pdfalto_server /usr/local/bin/pdfalto_server
 
 # ─────────────────────────────────────────────────────────────
 # Stage 2: Build final GROBID image
 # ─────────────────────────────────────────────────────────────
 FROM openjdk:11-jre-slim
 
-# 簡易シェルユーティリティをインストール（envsubst 用）
+# envsubst 用ユーティリティをインストール
 RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-      gettext-base \
+ && apt-get install -y --no-install-recommends gettext-base \
  && rm -rf /var/lib/apt/lists/*
 
 # 作業ディレクトリを設定
@@ -54,5 +52,5 @@ COPY grobid-home /opt/grobid/grobid-home
 # 環境変数設定
 ENV GROBID_HOME=/opt/grobid/grobid-home
 
-# ポート設定など環境変数を置換してから起動
-ENTRYPOINT ["sh","-c","envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && java -jar /opt/grobid/grobid-service.jar server /tmp/grobid.yaml"]
+# ポート設定など環境変数を置換して起動
+ENTRYPOINT ["sh", "-c", "envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && java -jar /opt/grobid/grobid-service.jar server /tmp/grobid.yaml"]
