@@ -20,4 +20,4 @@ COPY grobid-home/models                   /opt/grobid/grobid-home/models
 EXPOSE 8070
 
 # 4) Entrypoint：YAML を直接指定して起動
-ENTRYPOINT ["/opt/grobid/grobid-service/bin/grobid-service","server","/opt/grobid/grobid-home/config/grobid.yaml"]
+ENTRYPOINT ["java","-jar","/opt/grobid/grobid-service/lib/grobid-service-0.8.0.jar","server","/opt/grobid/grobid-home/config/grobid.yaml"]
