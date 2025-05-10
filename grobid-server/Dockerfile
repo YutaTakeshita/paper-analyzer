@@ -21,4 +21,6 @@ ENV PORT=8070
 EXPOSE ${PORT}
 
 # Entrypoint：1 行で指定
-ENTRYPOINT ["/opt/grobid/grobid-service/bin/grobid-service","server","/opt/grobid/grobid-service/profiles/default.properties"]
+ENTRYPOINT ["/opt/grobid/grobid-service/bin/grobid-service", \
+            "server", \
+            "/opt/grobid/grobid-home/config/grobid.yaml"]
