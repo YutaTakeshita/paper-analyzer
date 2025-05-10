@@ -22,8 +22,4 @@ ENV PORT=8070
 EXPOSE ${PORT}
 
 # 4) ENTRYPOINT：プロファイルを指定して起動
-ENTRYPOINT [
-  "/opt/grobid/grobid-service/bin/grobid-service",
-  "server",
-  "/opt/grobid/grobid-service/profiles/default.properties"
-]
+ENTRYPOINT ["/opt/grobid/grobid-service/bin/grobid-service", "server", "/opt/grobid/grobid-service/profiles/default.properties"]
