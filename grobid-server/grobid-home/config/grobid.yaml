@@ -1,10 +1,6 @@
-# ─────────────────────────────────────────────────────────────
-# GROBID メイン設定
-# ─────────────────────────────────────────────────────────────
 grobid:
   pdf:
     pdfalto:
-      # バイナリの絶対パス（Dockerfile と合わせる）
       path: "/usr/local/bin/pdfalto_server"
       memoryLimitMb: 6096
       timeoutSec: 120
@@ -14,10 +10,10 @@ server:
   type: custom
   applicationConnectors:
     - type: http
-      port: "${PORT:-8070}"
+      port: 8070      # ← 環境変数参照を削除（純粋に整数）
   adminConnectors:
     - type: http
-      port: "${ADMIN_PORT:-8071}"
+      port: 8071
 
 logging:
   level: INFO

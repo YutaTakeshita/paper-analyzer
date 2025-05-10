@@ -1,21 +1,23 @@
 # syntax=docker/dockerfile:1
 FROM openjdk:11-jre-slim
 
-# 不要なパッケージは省いて軽量化
+# unzip は不要なので省略。gettext-base を入れて envsubst を使えるようにする
 RUN apt-get update \
+ && apt-get install -y --no-install-recommends gettext-base \
  && rm -rf /var/lib/apt/lists/*
 
-# ビルド済みJarをコピー
+# ビルド済み Jar をコピー
 COPY grobid-service.jar /opt/grobid/grobid-service.jar
 
-# GROBID-HOMEフォルダを丸ごとコピー（config 以下を含む）
+# grobid-home フォルダ（config/models/pdfalto/resources）を丸ごとコピー
 COPY grobid-home /opt/grobid/grobid-home
 
-# 環境変数設定
+# 環境変数
 ENV GROBID_HOME=/opt/grobid/grobid-home
 ENV PORT=8070
 
 WORKDIR /opt/grobid
 EXPOSE 8070
 
-ENTRYPOINT ["java", "-jar", "grobid-service.jar", "server", "/opt/grobid/grobid-home/config/grobid.yaml"]
+# 起動時にテンプレートを envsubst してからサーバ起動
+ENTRYPOINT [ "sh", "-c", "envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && java -jar grobid-service.jar server /tmp/grobid.yaml" ]
