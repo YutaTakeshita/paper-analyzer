@@ -26,6 +26,8 @@ RUN git clone --recursive https://github.com/kermitt2/pdfalto.git . \
  && chmod +x install_deps.sh \
  # root 実行なので sudo は不要
  && sed -i 's/sudo //g' install_deps.sh \
+ # xpdfrc コピー処理を削除
+ && sed -i '/cp .*xpdfrc/d' install_deps.sh \
  && ./install_deps.sh
 
 # aconf.h が xpdf-4.03 サブモジュール内にあるので、インクルードパスにコピー
