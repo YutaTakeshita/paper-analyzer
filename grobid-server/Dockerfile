@@ -18,4 +18,4 @@ ENV PORT=8070
 WORKDIR /opt/grobid
 EXPOSE 8070
 
-ENTRYPOINT ["sh", "-c", "java -jar grobid-service.jar -gH ${GROBID_HOME} -p ${PORT}"]
+ ENTRYPOINT ["sh", "-c", "java -jar grobid-service.jar server -gH ${GROBID_HOME} -p ${PORT}"]
