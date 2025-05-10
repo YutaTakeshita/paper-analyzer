@@ -35,3 +35,25 @@ COPY --from=builder \
 ENV PORT=8070
 EXPOSE ${PORT}
 ENTRYPOINT ["java","-jar","/opt/grobid/grobid-service/lib/grobid-service-onejar.jar","server","/opt/grobid/grobid-home/config/grobid.yaml"]
+
+# syntax=docker/dockerfile:1
+FROM openjdk:11-jre-slim
+
+# 不要なパッケージは省いて軽量化
+RUN apt-get update \
+ && rm -rf /var/lib/apt/lists/*
+
+# ビルド済みJarをコピー
+COPY grobid-service.jar /opt/grobid/grobid-service.jar
+
+# GROBID-HOMEフォルダを丸ごとコピー（config 以下を含む）
+COPY grobid-home /opt/grobid/grobid-home
+
+# 環境変数設定
+ENV GROBID_HOME=/opt/grobid/grobid-home
+ENV PORT=8070
+
+WORKDIR /opt/grobid
+EXPOSE 8070
+
+ENTRYPOINT ["sh", "-c", "java -jar grobid-service.jar -gH ${GROBID_HOME} -p ${PORT}"]

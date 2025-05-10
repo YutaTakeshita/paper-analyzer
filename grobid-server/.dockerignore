@@ -1,43 +1,4 @@
-# ──────────────────────────────────────────────
-# 1) まず全体を ignore
-# ──────────────────────────────────────────────
-**
-
-# ──────────────────────────────────────────────
-# 2) イメージ作成に必要なファイルだけ例外で戻す
-# ──────────────────────────────────────────────
-
-# Dockerfile とビルド用スクリプト
-!Dockerfile
-!build.image.sh
-
-# （Cloud Build を使うなら）cloudbuild.yaml も含める
-!cloudbuild.yaml
-
-# grobid-service のプロファイル設定群
-!grobid-service/profiles/**
-
-# grobid-service の起動スクリプト
-!grobid-service/scripts/**
-
-# grobid-service の wrapper 実行ファイル
-!grobid-service/bin/**
-
-# one-jar ビルド成果物
-!grobid-service/build/libs/*.jar
-
-# Grobid 設定ファイル
-!grobid-home/config/grobid.yaml
-
-# 学習モデル一式
-!grobid-home/models/**
-
-# PDFalto バイナリ
-!grobid-home/pdfalto/**
-
-# もしトップレベルに scripts/ があれば
-!scripts/**
-
-# 念のため ignore ファイル自身も
-!.gitignore
-!.dockerignore
+/*
+!/Dockerfile
+!/grobid-service.jar
+!/grobid-home/**
