@@ -3,7 +3,7 @@
 # ─────────────────────────────────────────────────────────────
 FROM debian:bullseye-slim AS pdfalto-builder
 
-# 必要なビルドツールとライブラリをインストール
+# 必要なビルドツールとライブラリをインストール（CA証明書も含む）
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       build-essential \
@@ -13,44 +13,49 @@ RUN apt-get update \
       libpoppler-dev \
       libfreetype6-dev \
       libfontconfig1-dev \
+      ca-certificates \
+ && update-ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-# PDFalto のソースをクローンし、依存スクリプトを実行（install_deps.sh 内の sudo はすべて削除済み）
+# PDFalto のソースをクローンし、依存スクリプトの sudo を除去して実行
 WORKDIR /opt/pdfalto
 RUN git clone --recursive https://github.com/kermitt2/pdfalto.git . \
  && chmod +x install_deps.sh \
+ && sed -i 's/sudo //g' install_deps.sh \
  && ./install_deps.sh
 
-# ビルドディレクトリでコンパイル
-RUN mkdir build && cd build \
+# ビルドディレクトリでコンパイル＆バイナリを配置
+RUN mkdir build \
+ && cd build \
  && cmake .. \
- && make -j"$(nproc)"
-
-# ビルド済みバイナリを次ステージにコピーしやすい場所へ配置
-RUN cp build/pdfalto_server /usr/local/bin/pdfalto_server
+ && make -j"$(nproc)" \
+ && cp pdfalto_server /usr/local/bin/pdfalto_server
 
 # ─────────────────────────────────────────────────────────────
 # Stage 2: Build final GROBID image
 # ─────────────────────────────────────────────────────────────
 FROM openjdk:11-jre-slim
 
-# envsubst 用ユーティリティをインストール
+# envsubst 用のユーティリティと CA 証明書をインストール
 RUN apt-get update \
- && apt-get install -y --no-install-recommends gettext-base \
+ && apt-get install -y --no-install-recommends \
+      gettext-base \
+      ca-certificates \
+ && update-ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
 # 作業ディレクトリを設定
 WORKDIR /opt/grobid
 
-# PDFalto サーババイナリをビルドステージからコピー
+# PDFalto バイナリをビルドステージからコピー
 COPY --from=pdfalto-builder /usr/local/bin/pdfalto_server /usr/local/bin/pdfalto_server
 
-# GROBID の JAR とホームフォルダをコピー
+# GROBID の JAR とホームディレクトリをコピー
 COPY grobid-service.jar /opt/grobid/grobid-service.jar
-COPY grobid-home /opt/grobid/grobid-home
+COPY grobid-home     /opt/grobid/grobid-home
 
-# 環境変数設定
+# GROBID ホームを環境変数で設定
 ENV GROBID_HOME=/opt/grobid/grobid-home
 
-# ポート設定など環境変数を置換して起動
-ENTRYPOINT ["sh", "-c", "envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && java -jar /opt/grobid/grobid-service.jar server /tmp/grobid.yaml"]
+# ポート設定など環境変数を置換してからサーバを起動
+ENTRYPOINT ["sh","-c","envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && java -jar /opt/grobid/grobid-service.jar server /tmp/grobid.yaml"]
