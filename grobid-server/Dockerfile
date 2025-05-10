@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-# Stage 1: Build PDFalto server from source with install_deps.sh
+# Stage 1: Build PDFalto server from source
 # ─────────────────────────────────────────────────────────────
 FROM debian:bullseye-slim AS pdfalto-builder
 
@@ -13,23 +13,20 @@ RUN apt-get update \
       libpoppler-dev \
       libfreetype6-dev \
       libfontconfig1-dev \
+      ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-# PDFalto のソースをクローンし、依存関係をインストールするスクリプトでセットアップ
+# PDFalto のソースをクローンし、install_deps.sh で依存関係をセットアップ
 WORKDIR /opt/pdfalto
 RUN git clone --recursive https://github.com/kermitt2/pdfalto.git . \
  && chmod +x install_deps.sh \
  && ./install_deps.sh
 
 # ビルドディレクトリでコンパイル
-WORKDIR /opt/pdfalto
 RUN mkdir build && cd build \
  && cmake .. \
- && make -j"$(nproc)"
-
-# ビルド済みバイナリを外へコピー
-RUN cp build/pdfalto_server /usr/local/bin/pdfalto_server
-
+ && make -j"$(nproc)" \
+ && cp pdfalto_server /usr/local/bin/pdfalto_server
 
 # ─────────────────────────────────────────────────────────────
 # Stage 2: Build final GROBID image
@@ -51,10 +48,6 @@ COPY --from=pdfalto-builder /usr/local/bin/pdfalto_server /usr/local/bin/pdfalto
 COPY grobid-service.jar /opt/grobid/grobid-service.jar
 COPY grobid-home /opt/grobid/grobid-home
 
-# 環境変数のデフォルトを設定
+# 環境変数を設定し、設定ファイル内のポートなどを置換してから起動
 ENV GROBID_HOME=/opt/grobid/grobid-home
-ENV PORT=8070
-ENV ADMIN_PORT=8071
-
-# ポート設定など環境変数を置換してから起動
-ENTRYPOINT ["sh","-c", "envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && java -jar /opt/grobid/grobid-service.jar server /tmp/grobid.yaml"]
+ENTRYPOINT ["sh","-c","envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && java -jar /opt/grobid/grobid-service.jar server /tmp/grobid.yaml"]
