@@ -20,4 +20,4 @@ WORKDIR /opt/grobid
 EXPOSE 8070
 
 # 起動時にテンプレートを envsubst してからサーバ起動
-ENTRYPOINT [ "sh", "-c", "envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && java -jar grobid-service.jar server /tmp/grobid.yaml" ]
+ENTRYPOINT ["sh", "-c", "envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && java -Dorg.grobid.config=/tmp/grobid.yaml -jar grobid-service.jar server /tmp/grobid.yaml"]
