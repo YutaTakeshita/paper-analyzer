@@ -1,29 +1,37 @@
 # ──────────────────────────────────────────────────────────────
-# GROBID 0.8.0 + arm64 PDFalto 同梱（Render／Apple Silicon対応）
+# 1) ビルドステージ：Gradle で one-jar を組み立てる
 # ──────────────────────────────────────────────────────────────
-FROM --platform=linux/arm64 lfoppiano/grobid:0.8.0
+FROM gradle:7.5-jdk11 AS builder
+WORKDIR /workspace
+COPY grobid-server/grobid-service/settings.gradle ./
+COPY grobid-server/grobid-service/build.gradle    ./
+COPY grobid-server/grobid-service/src             ./src
+RUN gradle clean assemble -x test
+
+# ──────────────────────────────────────────────────────────────
+# 2) ランタイムステージ：GROBID ベースイメージに pdfalto を追加
+# ──────────────────────────────────────────────────────────────
+FROM lfoppiano/grobid:0.8.0
 USER root
 
-# 1) arm64版 pdfalto_server を取得＆配置
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates && \
-    if [ "$(uname -m)" = "aarch64" ]; then \
-      URL=https://github.com/Science-Miner/pdfalto/releases/download/v0.5/pdfalto_server-0.5-linux-aarch64; \
-    else \
-      URL=https://github.com/Science-Miner/pdfalto/releases/download/v0.5/pdfalto_server-0.5-linux-x86_64; \
-    fi && \
-    curl -L -o /usr/local/bin/pdfalto_server "$URL" && \
-    chmod +x /usr/local/bin/pdfalto_server && \
-    ln -sf /usr/local/bin/pdfalto_server /usr/local/bin/pdfalto
+#x86_64 用 pdfalto_server の取得
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl ca-certificates \
+ && curl -L -o /usr/local/bin/pdfalto_server \
+      https://github.com/Science-Miner/pdfalto/releases/download/v0.5/pdfalto_server-0.5-linux-x86_64 \
+ && chmod +x /usr/local/bin/pdfalto_server \
+ && ln -sf /usr/local/bin/pdfalto_server /usr/local/bin/pdfalto
 
-# 2) 必要なファイルだけコピー
-COPY grobid-home/config/grobid.yaml       /opt/grobid/grobid-home/config/grobid.yaml
-COPY grobid-home/models                   /opt/grobid/grobid-home/models
-# （※ grobid-service はベースイメージに含まれているため、ここでは一切触りません）
+# GROBID の設定ファイルとモデルを丸ごとコピー
+COPY grobid-server/grobid-home/config/grobid.yaml       /opt/grobid/grobid-home/config/grobid.yaml
+COPY grobid-server/grobid-home/models                   /opt/grobid/grobid-home/models
 
-# 3) ポート設定
+# builder から組み立てた one-jar を持ってくる
+COPY --from=builder \
+     /workspace/grobid-service/build/libs/grobid-service-*-onejar.jar \
+     /opt/grobid/grobid-service/lib/grobid-service-onejar.jar
+
+# ポート公開／エントリポイント
 ENV PORT=8070
-EXPOSE 8070
-
-# 4) エントリポイントはサービス起動スクリプトを１行で
-ENTRYPOINT /opt/grobid/grobid-service/bin/grobid-service server /opt/grobid/grobid-home/config/grobid.yaml
+EXPOSE ${PORT}
+ENTRYPOINT ["java","-jar","/opt/grobid/grobid-service/lib/grobid-service-onejar.jar","server","/opt/grobid/grobid-home/config/grobid.yaml"]
