@@ -1,2 +1,51 @@
-# macOS Finder metadata
-**/.DS_Store
+# ────────────────────
+# OS / エディタ 一般
+# ────────────────────
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+
+# VSCode / IntelliJ
+.vscode/
+.idea/
+*.iml
+
+# ────────────────────
+# ビルド生成物
+# ────────────────────
+# Java
+target/
+build/
+dist/
+*.jar
+*.class
+
+# ログ・一時ファイル
+logs/
+*.log
+*.tmp
+
+# Python / シェル キャッシュ
+__pycache__/
+*.py[cod]
+
+# ────────────────────
+# GROBID関連
+# ────────────────────
+# 必要なモデルや設定はコミットする → 以下をコメントアウトまたは削除
+# grobid-home/models/
+# grobid-home/scripts/
+
+# 一時ディレクトリは無視
+grobid-home/tmp/
+
+# ────────────────────
+# その他大容量 / 機密ファイル
+# ────────────────────
+.env
+*.key
+*.pem
+
+grobid-service/*.jar
+grobid-service/build/

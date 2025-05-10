@@ -1,0 +1,19 @@
+grobid:
+  pdf:
+    pdfalto:
+      # 実行可能なバイナリへの絶対パス（必須）
+      path: "/usr/local/bin/pdfalto_server"
+      # 必要に応じて調整
+      memoryLimitMb: 6096
+      timeoutSec: 120
+
+server:
+  applicationConnectors:
+    - type: http
+      port: ${PORT:-8070}     # 環境変数 PORT があればそちらを、なければ 8070 を使う
+  adminConnectors:
+    - type: http
+      port: 8071
+
+logging:
+  level: INFO    # デフォルトのままでも可

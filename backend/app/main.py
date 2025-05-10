@@ -73,7 +73,14 @@ async def grobid_process(file: UploadFile = File(...)):
             resp = requests.post(
                 f"{GROBID_URL}/api/processFulltextDocument",
                 files={"input": (file.filename, f, "application/pdf")},
+                timeout=120
             )
+            try:
+                resp.raise_for_status()
+            except requests.HTTPError as e:
+                # Return a clear error if the PDF conversion failed
+                detail_msg = resp.text or str(e)
+                raise HTTPException(status_code=502, detail=f"GROBID process error: {detail_msg}")
         if resp.status_code == 200:
             return {"tei": resp.text}
         logger.error(f"GROBID returned status {resp.status_code}: {resp.text}")

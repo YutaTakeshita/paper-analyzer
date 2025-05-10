@@ -1,0 +1,28 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '-t'
+  - 'gcr.io/grobid-server/grobid-server'
+  - '-f'
+  - 'Dockerfile.cloudrun'
+  - '.'
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'push'
+  - 'gcr.io/grobid-server/grobid-server'
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args:
+  - 'run'
+  - 'deploy'
+  - 'grobid-server'
+  - '--image'
+  - 'gcr.io/grobid-server/grobid-server'
+  - '--platform'
+  - 'managed'
+  - '--region'
+  - 'asia-northeast1'
+  - '--allow-unauthenticated'
+images:
+- 'gcr.io/grobid-server/grobid-server'
