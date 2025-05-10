@@ -1,33 +1,23 @@
 # ─────────────────────────────────────────────
-# マルチプラットフォーム対応：pdfalto_server を自動で選択
+# Render / x86_64 環境向け Grobid 0.8.0 + pdfalto
 # ─────────────────────────────────────────────
-# Stage0: pdfalto バイナリのダウンロード
-FROM docker.io/library/debian:bookworm-slim AS pdfalto
-ARG BUILDPLATFORM
+FROM lfoppiano/grobid:0.8.0
+USER root
+
+# 1) x86_64 用 pdfalto_server を取得して配置
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ca-certificates \
- && \
-    if [ "${BUILDPLATFORM##*/}" = "arm64" ]; then \
-      URL=https://github.com/Science-Miner/pdfalto/releases/download/v0.5/pdfalto_server-0.5-linux-aarch64; \
-    else \
-      URL=https://github.com/Science-Miner/pdfalto/releases/download/v0.5/pdfalto_server-0.5-linux-x86_64; \
-    fi \
- && curl -L -o /usr/local/bin/pdfalto_server "$URL" \
+ && curl -L -o /usr/local/bin/pdfalto_server \
+      https://github.com/Science-Miner/pdfalto/releases/download/v0.5/pdfalto_server-0.5-linux-x86_64 \
  && chmod +x /usr/local/bin/pdfalto_server \
  && ln -sf /usr/local/bin/pdfalto_server /usr/local/bin/pdfalto
 
-# Stage1: 真の GROBID イメージ
-FROM lfoppiano/grobid:0.8.0 AS grobid
-USER root
+# 2) GROBID の設定とモデルを丸ごとコピー
+COPY grobid-home/config/grobid.yaml       /opt/grobid/grobid-home/config/grobid.yaml
+COPY grobid-home/models                   /opt/grobid/grobid-home/models
 
-# pdfalto をステージ0 からコピー
-COPY --from=pdfalto /usr/local/bin/pdfalto_server /usr/local/bin/pdfalto_server
-COPY --from=pdfalto /usr/local/bin/pdfalto        /usr/local/bin/pdfalto
-
-# GROBID 本体＋設定
-COPY grobid-home      /opt/grobid/grobid-home
-COPY grobid-service   /opt/grobid/grobid-service
-
+# 3) HTTP ポート公開
 EXPOSE 8070
 
-ENTRYPOINT ["/opt/grobid/grobid-service/bin/grobid-service", "server", "/opt/grobid/grobid-home/config/grobid.yaml"]
+# 4) Entrypoint：YAML を直接指定して起動
+ENTRYPOINT ["/opt/grobid/grobid-service/bin/grobid-service","server","/opt/grobid/grobid-home/config/grobid.yaml"]
