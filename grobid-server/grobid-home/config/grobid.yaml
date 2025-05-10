@@ -8,22 +8,16 @@ grobid:
       path: "/usr/local/bin/pdfalto_server"
       memoryLimitMb: 6096
       timeoutSec: 120
-
   grobidHome: "."
-  
+
 server:
   type: custom
   applicationConnectors:
     - type: http
-      # 必ず整数で指定（文字列や ${…} は使わない）
-      port: 8070
+      port: "${PORT:-8070}"
   adminConnectors:
     - type: http
-      port: 8071
+      port: "${ADMIN_PORT:-8071}"
 
 logging:
   level: INFO
-      port: ${PORT:-8070}
-  adminConnectors:
-    - type: http
-      port: ${ADMIN_PORT:-8071}
