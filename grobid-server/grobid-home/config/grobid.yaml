@@ -4,19 +4,16 @@
 grobid:
   pdf:
     pdfalto:
-      # 実行可能なバイナリへの絶対パス
+      # バイナリの絶対パス（Dockerfile と合わせる）
       path: "/usr/local/bin/pdfalto_server"
-      # 必要に応じて調整
       memoryLimitMb: 6096
       timeoutSec: 120
 
 server:
-  # HTTP リクエスト用コネクタ
   applicationConnectors:
     - type: http
-      # 環境変数 PORT があればその値を、無ければ 8070
-      port: ${PORT:-8070}
-  # 管理用エンドポイント（メトリクス等）
+      # 必ず整数で指定（文字列や ${…} は使わない）
+      port: 8070
   adminConnectors:
     - type: http
       port: 8071
