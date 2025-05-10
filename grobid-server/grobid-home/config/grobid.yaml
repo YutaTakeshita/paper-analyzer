@@ -1,19 +1,25 @@
+# ─────────────────────────────────────────────────────────────
+# GROBID メイン設定
+# ─────────────────────────────────────────────────────────────
 grobid:
   pdf:
     pdfalto:
-      # 実行可能なバイナリへの絶対パス（必須）
+      # 実行可能なバイナリへの絶対パス
       path: "/usr/local/bin/pdfalto_server"
       # 必要に応じて調整
       memoryLimitMb: 6096
       timeoutSec: 120
 
 server:
+  # HTTP リクエスト用コネクタ
   applicationConnectors:
     - type: http
-      port: ${PORT:-8070}     # 環境変数 PORT があればそちらを、なければ 8070 を使う
+      # 環境変数 PORT があればその値を、無ければ 8070
+      port: ${PORT:-8070}
+  # 管理用エンドポイント（メトリクス等）
   adminConnectors:
     - type: http
       port: 8071
 
 logging:
-  level: INFO    # デフォルトのままでも可
+  level: INFO
