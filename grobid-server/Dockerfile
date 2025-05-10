@@ -25,6 +25,7 @@ RUN apt-get update \
 WORKDIR /opt/pdfalto
 RUN git clone --recursive https://github.com/kermitt2/pdfalto.git . \
  && chmod +x install_deps.sh \
+ && cd /opt/pdfalto \
  && sed -i 's/sudo //g' install_deps.sh \
  && ./install_deps.sh
 
