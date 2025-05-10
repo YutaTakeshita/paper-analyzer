@@ -1,33 +1,29 @@
 # ─────────────────────────────────────────────────────────────
-# Stage 1: Build PDFalto server from source
+# Stage1: PDFalto ビルド
 # ─────────────────────────────────────────────────────────────
 FROM debian:bullseye-slim AS pdfalto-builder
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      build-essential \
-      cmake \
-      git \
-      wget \
-      libpoppler-dev \
-      libfreetype6-dev \
-      libfontconfig1-dev \
+      build-essential cmake git wget \
+      libpoppler-dev libfreetype6-dev libfontconfig1-dev \
       ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/pdfalto
 RUN git clone --recursive https://github.com/kermitt2/pdfalto.git . \
  && chmod +x install_deps.sh \
- && sed -i 's/sudo //g' install_deps.sh \
- \
- # デバッグ: clone後、スクリプト実行前の状況を確認
- && echo "=== BEFORE INSTALL_DEPS ===" \
+ && sed -i 's/sudo //g' install_deps.sh
+
+# ─── デバッグ用: スクリプト内部をトレースしつつ実行 ──────────────────
+RUN echo "=== BEFORE INSTALL_DEPS ===" \
  && ls -R . \
- \
- # install_deps.sh 実行
- && ./install_deps.sh \
-    || (echo "=== INSTALL_DEPS FAILED ==="; ls -R .; false) \
- \
+ && echo "=== RUNNING install_deps.sh with -x ===" \
+ # bash -x で全コマンド表示、かつ stdout/stderr をログに残す
+ && bash -x ./install_deps.sh > /tmp/install.log 2>&1 \
+ || (echo "=== INSTALL_DEPS FAILED: dump /tmp/install.log ===" \
+     && sed -n '1,200p' /tmp/install.log \
+     && false) \
  # ビルド
  && mkdir build && cd build \
  && cmake .. \
