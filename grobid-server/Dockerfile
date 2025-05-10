@@ -3,7 +3,7 @@
 # ─────────────────────────────────────────────────────────────
 FROM debian:bullseye-slim AS pdfalto-builder
 
-# 必要なビルドツールとライブラリをインストール
+# 基本的なビルドツールとライブラリをインストール
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       build-essential \
@@ -20,21 +20,24 @@ RUN apt-get update \
       pkg-config \
  && rm -rf /var/lib/apt/lists/*
 
-# ソースをクローンし、install_deps.sh 内の不要処理を除去して実行
+# PDFalto のソースをクローンし、依存スクリプトを実行
 WORKDIR /opt/pdfalto
 RUN git clone --recursive https://github.com/kermitt2/pdfalto.git . \
  && chmod +x install_deps.sh \
+ # root 実行なので sudo は不要
  && sed -i 's/sudo //g' install_deps.sh \
- && sed -i '/cp .*xpdfrc/s/^/#/' install_deps.sh \
  && ./install_deps.sh
 
-# ビルド
-RUN mkdir build \
- && cd build \
- && cmake .. \
+# aconf.h が xpdf-4.03 サブモジュール内にあるので、インクルードパスにコピー
+RUN cp xpdf-4.03/config/aconf.h /usr/include/ \
+ && cp xpdf-4.03/config/zconf.h /usr/include/
+
+# ビルドディレクトリでコンパイル
+RUN mkdir build && cd build \
+ && cmake .. -DCMAKE_CXX_FLAGS="-I/usr/include" \
  && make -j"$(nproc)"
 
-# ビルド済みバイナリを別ステージに渡す
+# ビルド済みバイナリを取り出しやすく配置
 RUN cp build/pdfalto_server /usr/local/bin/pdfalto_server
 
 # ─────────────────────────────────────────────────────────────
@@ -42,21 +45,21 @@ RUN cp build/pdfalto_server /usr/local/bin/pdfalto_server
 # ─────────────────────────────────────────────────────────────
 FROM openjdk:11-jre-slim
 
-# envsubst 用ユーティリティをインストール
+# envsubst 用シェルユーティリティをインストール
 RUN apt-get update \
  && apt-get install -y --no-install-recommends gettext-base \
  && rm -rf /var/lib/apt/lists/*
 
-# 作業ディレクトリ
+# 作業ディレクトリを設定
 WORKDIR /opt/grobid
 
-# PDFalto バイナリをコピー
+# PDFalto サーババイナリをビルドステージからコピー
 COPY --from=pdfalto-builder /usr/local/bin/pdfalto_server /usr/local/bin/pdfalto_server
 
-# GROBID 本体をコピー
+# GROBID の JAR とホームフォルダをコピー
 COPY grobid-service.jar /opt/grobid/grobid-service.jar
 COPY grobid-home /opt/grobid/grobid-home
 
-# 設定ファイルのパス置換＆起動
+# 環境変数とポート設定を反映して起動
 ENV GROBID_HOME=/opt/grobid/grobid-home
-ENTRYPOINT ["sh","-c","envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && java -jar /opt/grobid/grobid-service.jar server /tmp/grobid.yaml"]
+ENTRYPOINT ["sh", "-c", "envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && java -jar /opt/grobid/grobid-service.jar server /tmp/grobid.yaml"]
