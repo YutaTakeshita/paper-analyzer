@@ -1,26 +1,27 @@
-# ────────────────────────────────────────────────────
-# Render (x86_64) 向け：GROBID 0.8.0 + PDFalto x86_64
-# ────────────────────────────────────────────────────
-FROM --platform=linux/amd64 lfoppiano/grobid:0.8.0
+# ─────────────────────────────────────────────
+# GROBID 0.8.0 + arm64 pdfalto (Science-Miner)
+# Render / Apple Silicon 向け
+# ─────────────────────────────────────────────
+FROM --platform=linux/arm64 lfoppiano/grobid:0.8.0
 USER root
 
-# PDFalto x86_64 バイナリを取得して配置
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates && \
-    curl -L -o /usr/local/bin/pdfalto_server \
-      https://github.com/Science-Miner/pdfalto/releases/download/v0.5/pdfalto_server-0.5-linux-x86_64 && \
-    chmod +x /usr/local/bin/pdfalto_server && \
-    ln -sf /usr/local/bin/pdfalto_server /usr/local/bin/pdfalto
+# 1) arm64版 pdfalto_server を取得して配置
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl ca-certificates \
+ && curl -L -o /usr/local/bin/pdfalto_server \
+      https://github.com/Science-Miner/pdfalto/releases/download/v0.5/pdfalto_server-0.5-linux-aarch64 \
+ && chmod +x /usr/local/bin/pdfalto_server \
+ && ln -sf /usr/local/bin/pdfalto_server /usr/local/bin/pdfalto
 
-# GROBID 本体＋プロファイルをコピー
-COPY grobid-home      /opt/grobid/grobid-home
-COPY grobid-service/profiles /opt/grobid/grobid-service/profiles
+# 2) GROBID ホームとサービスのプロファイルをコピー
+COPY grobid-home       /opt/grobid/grobid-home
+COPY grobid-service/   /opt/grobid/grobid-service/
 
-# 環境変数とポート公開
-ENV PORT=8070
-EXPOSE ${PORT}
+# 3) 必要に応じてモデルや設定を上書き
+# COPY grobid-home/models /opt/grobid/grobid-home/models
 
-# Entrypoint：1 行で指定
-ENTRYPOINT ["/opt/grobid/grobid-service/bin/grobid-service", \
-            "server", \
-            "/opt/grobid/grobid-home/config/grobid.yaml"]
+# 4) ポート公開
+EXPOSE 8070
+
+# 5) Entrypoint（exec 形式・一行）
+ENTRYPOINT ["/opt/grobid/grobid-service/bin/grobid-service", "server", "/opt/grobid/grobid-home/config/grobid.yaml"]
