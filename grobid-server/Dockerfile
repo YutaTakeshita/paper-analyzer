@@ -26,4 +26,4 @@ RUN echo "=== DEBUG: VERIFY CONFIG FILES ===" \
  && ls -l /opt/grobid/config/grobid.yaml
 
 # 4) ENTRYPOINT を一行で記述
-ENTRYPOINT ["sh","-c","echo 'Starting GROBID with LOG_LEVEL=${LOG_LEVEL:-INFO}'; envsubst < /opt/grobid/config/grobid.yaml > /tmp/grobid.yaml; exec /opt/grobid/grobid-service/bin/grobid-service --config /tmp/grobid.yaml"]
+ENTRYPOINT ["sh","-c","echo 'Starting GROBID with LOG_LEVEL=${LOG_LEVEL:-INFO}'; envsubst < /opt/grobid/config/grobid.yaml > /tmp/grobid.yaml; exec java -Dorg.slf4j.simpleLogger.defaultLogLevel=${LOG_LEVEL:-INFO} -jar /opt/grobid/grobid-service/lib/grobid-service-0.7.2.jar server /tmp/grobid.yaml"]
