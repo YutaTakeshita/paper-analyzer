@@ -14,7 +14,7 @@ RUN apt-get update \
       libpoppler-dev \
       libfreetype6-dev \
       libfontconfig1-dev \
-      libicu-dev \                    
+      libicu-dev \                   
       autoconf \
       automake \
       libtool \
@@ -62,4 +62,6 @@ COPY grobid-home       /opt/grobid/grobid-home
 
 # 起動時に環境変数を YAML に埋め込んで実行
 ENV GROBID_HOME=/opt/grobid/grobid-home
-ENTRYPOINT ["sh", "-c", "envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && exec java -jar /opt/grobid/grobid-service.jar server /tmp/grobid.yaml"]
+ENTRYPOINT ["sh", "-c", "\
+    envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml && \
+    exec java -jar /opt/grobid/grobid-service.jar server /tmp/grobid.yaml"]
