@@ -6,8 +6,9 @@ FROM debian:bullseye-slim AS pdfalto-builder
 # 基本的なビルドツールとライブラリをインストール
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      build-essential cmake git wget ca-certificates \
-      libpoppler-dev libfreetype6-dev libfontconfig1-dev \
+     build-essential cmake git wget ca-certificates \
+     libpoppler-dev libfreetype6-dev libfontconfig1-dev \
+     autoconf automake libtool pkg-config \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/pdfalto
