@@ -34,23 +34,20 @@ RUN echo "=== RUNNING install_deps.sh ===" \
 # 5) デバッグ: install_deps.sh 実行後の状況
 RUN echo "=== AFTER install_deps.sh ===" && ls -R /opt/pdfalto
 
-# 6) *.in → *.h ヘッダ生成（zconf.h.in の行は削除）
+# 6) aconf.h を生成
 RUN echo "=== GENERATING aconf.h ===" \
  && sed 's|@PACKAGE_@|pdfalto|g' xpdf-4.03/aconf.h.in > xpdf-4.03/aconf.h
 
-# 7) 各 .cc ファイルに必要ヘッダを先頭に追加
+# 7) 各 .cc ファイルに必要ヘッダを先頭に追加 & findCMapFile 呼び出しを修正
 RUN echo "=== PATCHING SOURCE FILES ===" \
  && for f in \
       xpdf-4.03/xpdf/CMap.cc \
       xpdf-4.03/xpdf/CharCodeToUnicode.cc \
       xpdf-4.03/xpdf/Catalog.cc \
       xpdf-4.03/splash/SplashClip.cc \
-      xpdf-4.03/splash/SplashScreen.cc ; do \
-      sed -i '1i\
-#include <cstdio>\
-#include <cstring>\
-#include <cstdlib>\
-#include <unistd.h>' "$f"; \
+      xpdf-4.03/splash/SplashScreen.cc \
+    ; do \
+      sed -i $'1i#include <cstdio>\n#include <cstring>\n#include <cstdlib>\n#include <unistd.h>' "$f"; \
     done \
  && sed -E -i 's/\bfindCMapFile\(\s*([^,]+)\s*,\s*([^)]+)\s*\)/findFontFile(\1->c_str(), \2->c_str())/g' xpdf-4.03/xpdf/CMap.cc
  
