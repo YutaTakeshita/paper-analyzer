@@ -1,17 +1,29 @@
+# ─────────────────────────────────────────────────────────────
+# Stage 2: Build final GROBID image (修正版)
+# ─────────────────────────────────────────────────────────────
 FROM lfoppiano/grobid:0.7.2
 
 USER root
-RUN apt-get update \
+
+# 1) envsubst を含むシェルユーティリティを追加インストール
+RUN echo "=== INSTALL DEBUG TOOLS ===" \
+ && apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gettext-base \
  && rm -rf /var/lib/apt/lists/*
 
-# (必要なら grobid.yaml を上書き)
+# 2) Grobid 設定ファイルを配置
+#    - /opt/grobid/grobid-home/config/grobid.yaml は既存の読み込み先
+#    - /opt/grobid/config/grobid.yaml は内部で参照されるパス
+RUN echo "=== PREPARE CONFIG DIRECTORIES ===" \
+ && mkdir -p /opt/grobid/config \
+ && echo "=== COPY CUSTOM grobid.yaml TO BOTH LOCATIONS ==="
 COPY grobid-home/config/grobid.yaml /opt/grobid/grobid-home/config/grobid.yaml
+COPY grobid-home/config/grobid.yaml /opt/grobid/config/grobid.yaml
 
-# デバッグ: JAR と起動スクリプトの存在確認
-RUN echo "=== DEBUG: VERIFY FILES ===" \
- && ls -l /opt/grobid/grobid-service/lib/grobid-service-*.jar \
- && ls -l /opt/grobid/grobid-service/bin/grobid-service
+# 3) デバッグ: 実際にファイルが配置されたことを確認
+RUN echo "=== DEBUG: VERIFY CONFIG FILES ===" \
+ && ls -l /opt/grobid/grobid-home/config/grobid.yaml \
+ && ls -l /opt/grobid/config/grobid.yaml
 
-# ENTRYPOINT は 1 行で、公式スクリプトを呼び出す
-ENTRYPOINT ["sh","-c","echo \"Starting GROBID with LOG_LEVEL=${LOG_LEVEL:-INFO}\"; envsubst < /opt/grobid/grobid-home/config/grobid.yaml > /tmp/grobid.yaml; exec /opt/grobid/grobid-service/bin/grobid-service server /tmp/grobid.yaml"]
+# 4) ENTRYPOINT を一行で記述
+ENTRYPOINT ["sh","-c","echo 'Starting GROBID with LOG_LEVEL=${LOG_LEVEL:-INFO}'; envsubst < /opt/grobid/config/grobid.yaml > /tmp/grobid.yaml; exec /opt/grobid/grobid-service/bin/grobid-service --config /tmp/grobid.yaml"]
