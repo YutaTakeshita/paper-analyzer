@@ -21,6 +21,7 @@ RUN echo "=== CLONING PDFalto SOURCE ===" \
  && chmod +x install_deps.sh \
  && sed -i 's/sudo //g' install_deps.sh \
  && sed -i '/cp .*xpdfrc/d' install_deps.sh
+ 
 
 # 3) デバッグ: install_deps.sh 実行前の状況
 RUN echo "=== BEFORE install_deps.sh ===" && ls -R /opt/pdfalto
@@ -33,20 +34,15 @@ RUN echo "=== RUNNING install_deps.sh ===" \
 # 5) デバッグ: install_deps.sh 実行後の状況
 RUN echo "=== AFTER install_deps.sh ===" && ls -R /opt/pdfalto
 
-# 6) パッチ: aconf.h を生成
+# 6) *.in → *.h ヘッダ生成（zconf.h.in の行は削除）
 RUN echo "=== GENERATING aconf.h ===" \
  && sed 's|@PACKAGE_@|pdfalto|g' xpdf-4.03/aconf.h.in > xpdf-4.03/aconf.h
 
-# 7) パッチ: 各 .cc ファイルにヘッダ追加 & 関数シグネチャ修正
-RUN echo "=== PATCHING ALL RELEVANT .cc FILES ===" \
- && for f in \
-      xpdf-4.03/xpdf/CMap.cc \
-      xpdf-4.03/xpdf/CharCodeToUnicode.cc \
-      xpdf-4.03/xpdf/Catalog.cc; do \
-      sed -i '1i#include <cstdio>\n#include <cstring>' "$f"; \
-    done \
- && sed -i 's/\bfindCMapFile\s*(\([^,]*\),\s*\([^)]*\))/findFontFile(\1->c_str(), \2->c_str())/g' xpdf-4.03/xpdf/CMap.cc
-
+# 7) CMap.cc パッチ：ヘッダ追加 & 関数シグネチャ修正
+RUN echo "=== PATCHING CMap.cc ===" \
+ && sed -i '1i#include <cstdio>\n#include <cstring>' xpdf-4.03/xpdf/CMap.cc \
+ && sed -E -i 's/\bfindCMapFile\(\s*([^,]+)\s*,\s*([^)]+)\s*\)/findFontFile(\1->c_str(), \2->c_str())/g' xpdf-4.03/xpdf/CMap.cc
+ 
 # 8) ビルド前チェック
 RUN echo "=== CHECK: CMakeLists.txt exists? ===" \
  && if [ -f /opt/pdfalto/CMakeLists.txt ]; then echo "OK"; else echo "MISSING CMakeLists.txt"; false; fi
