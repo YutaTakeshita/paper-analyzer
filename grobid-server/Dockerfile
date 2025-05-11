@@ -32,10 +32,9 @@ RUN echo "=== BEFORE install_deps.sh: LIST /opt/pdfalto ===" \
  && echo "=== AFTER install_deps.sh: LIST /opt/pdfalto ===" \
  && ls -R /opt/pdfalto
 
-# 4) *.in → *.h ヘッダ生成
-RUN echo "=== GENERATING aconf.h & zconf.h ===" \
- && sed 's|@PACKAGE_@|pdfalto|g' xpdf-4.03/aconf.h.in > xpdf-4.03/aconf.h \
- && sed 's|@PACKAGE_@|pdfalto|g' xpdf-4.03/zconf.h.in > xpdf-4.03/zconf.h
+# 4) *.in → *.h ヘッダ生成（zconf.h.in の行は削除）
+RUN echo "=== GENERATING aconf.h ===" \
+ && sed 's|@PACKAGE_@|pdfalto|g' xpdf-4.03/aconf.h.in > xpdf-4.03/aconf.h
 
 # 5) CMap.cc パッチ：ヘッダ追加 & 関数シグネチャ修正
 RUN echo "=== PATCHING CMap.cc ===" \
