@@ -68,9 +68,4 @@ ENV GROBID_HOME=/opt/grobid/grobid-home
 ENV LOG_LEVEL=DEBUG
 
 # 起動時に envsubst とともに JVM オプションでデバッグ出力を有効化
-ENTRYPOINT ["sh", "-c", "\
-  echo \"Starting GROBID with LOG_LEVEL=${LOG_LEVEL}\"; \
-  envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml; \
-  exec java -Dorg.slf4j.simpleLogger.defaultLogLevel=${LOG_LEVEL} \
-            -Ddw.serverConfigResource=/tmp/grobid.yaml \
-            -jar /opt/grobid/grobid-service.jar server /tmp/grobid.yaml"]
+ENTRYPOINT ["sh", "-c", "\echo \"Starting GROBID with LOG_LEVEL=${LOG_LEVEL}\"; envsubst < $GROBID_HOME/config/grobid.yaml > /tmp/grobid.yaml; exec java -Dorg.slf4j.simpleLogger.defaultLogLevel=${LOG_LEVEL} -Ddw.serverConfigResource=/tmp/grobid.yaml -jar /opt/grobid/grobid-service.jar server /tmp/grobid.yaml"]
