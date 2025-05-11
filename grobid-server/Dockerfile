@@ -13,7 +13,7 @@ RUN apt-get update \
       libpoppler-dev \
       libfreetype6-dev \
       libfontconfig1-dev \
-      libicu-dev \             # ← ICU 開発パッケージを追加
+      libicu-dev \ 
       autoconf \
       automake \
       libtool \
