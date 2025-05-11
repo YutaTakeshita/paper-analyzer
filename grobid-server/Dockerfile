@@ -38,7 +38,7 @@ RUN echo "=== AFTER install_deps.sh ===" && ls -R /opt/pdfalto
 RUN echo "=== GENERATING aconf.h ===" \
  && sed 's|@PACKAGE_@|pdfalto|g' xpdf-4.03/aconf.h.in > xpdf-4.03/aconf.h
 
-# 7) 各 .cc ファイルに必要ヘッダを先頭に追加 & findCMapFile 呼び出しを修正
+# 7) 各 .cc/.C ファイルに必要ヘッダを先頭に追加 & findCMapFile 呼び出しを修正
 RUN echo "=== PATCHING SOURCE FILES ===" \
  && for f in \
       xpdf-4.03/xpdf/CMap.cc \
@@ -47,10 +47,15 @@ RUN echo "=== PATCHING SOURCE FILES ===" \
       xpdf-4.03/splash/SplashClip.cc \
       xpdf-4.03/splash/SplashScreen.cc \
     ; do \
-      sed -i $'1i#include <cstdio>\n#include <cstring>\n#include <cstdlib>\n#include <unistd.h>' "$f"; \
+      sed -i '1i#include <cstdio>'       "$f"; \
+      sed -i '1i#include <cstring>'      "$f"; \
+      sed -i '1i#include <cstdlib>'      "$f"; \
+      sed -i '1i#include <unistd.h>'     "$f"; \
     done \
- && sed -E -i 's/\bfindCMapFile\(\s*([^,]+)\s*,\s*([^)]+)\s*\)/findFontFile(\1->c_str(), \2->c_str())/g' xpdf-4.03/xpdf/CMap.cc
- 
+ && sed -E -i \
+    's/\bfindCMapFile\(\s*([^,]+)\s*,\s*([^)]+)\s*\)/findFontFile(\1->c_str(), \2->c_str())/g' \
+    xpdf-4.03/xpdf/CMap.cc
+    
 # 8) ビルド前チェック
 RUN echo "=== CHECK: CMakeLists.txt exists? ===" \
  && if [ -f /opt/pdfalto/CMakeLists.txt ]; then echo "OK"; else echo "MISSING CMakeLists.txt"; false; fi
