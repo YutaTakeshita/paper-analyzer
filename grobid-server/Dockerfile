@@ -26,7 +26,7 @@ WORKDIR /opt/pdfalto
 # ビルドディレクトリでコンパイル
 RUN mkdir build && cd build \
  && cmake .. \
-      -DUSE_SYSTEM_ICU=ON \            # ← システム ICU を明示的に指定
+      -DUSE_SYSTEM_ICU=ON \ 
       -DICU_INCLUDE_DIR=/usr/include \
       -DICU_LIBRARY=/usr/lib/x86_64-linux-gnu/libicuuc.so \
       -DICU_I18N_LIBRARY=/usr/lib/x86_64-linux-gnu/libicui18n.so \
