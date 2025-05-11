@@ -32,13 +32,17 @@ RUN echo "=== BEFORE install_deps.sh: LIST /opt/pdfalto ===" \
  && echo "=== AFTER install_deps.sh: LIST /opt/pdfalto ===" \
  && ls -R /opt/pdfalto
 
-# 4) *.in → *.h ヘッダ生成（zconf.h.in の行は削除）
+# 4) aconf.h.in → aconf.h ヘッダ生成
 RUN echo "=== GENERATING aconf.h ===" \
  && sed 's|@PACKAGE_@|pdfalto|g' xpdf-4.03/aconf.h.in > xpdf-4.03/aconf.h
 
-# 5) CMap.cc パッチ：ヘッダ追加 & 関数シグネチャ修正
-RUN echo "=== PATCHING CMap.cc ===" \
- && sed -i '1i#include <cstdio>\n#include <cstring>' xpdf-4.03/xpdf/CMap.cc \
+# 5) ソース全体をパッチ：
+#    - CMap.cc, CharCodeToUnicode.cc, Catalog.cc の先頭に <cstdio>, <cstring> を追加
+#    - CMap.cc 内の findCMapFile → findFontFile 呼び出しを修正
+RUN echo "=== PATCHING ALL RELEVANT .cc FILES ===" \
+ && for f in xpdf-4.03/xpdf/{CMap.cc,CharCodeToUnicode.cc,Catalog.cc}; do \
+      sed -i '1i#include <cstdio>\n#include <cstring>' "$f"; \
+    done \
  && sed -i 's/\bfindCMapFile\s*(\([^,]*\),\s*\([^)]*\))/findFontFile(\1->c_str(), \2->c_str())/g' xpdf-4.03/xpdf/CMap.cc
 
 # 6) CMakeLists.txt の存在チェック
