@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import uuid
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 app = FastAPI(title="CERMINE Service")
 
@@ -20,7 +20,7 @@ async def isalive():
 
 @app.get("/api/isalive")
 async def api_isalive():
-    return await isalive()
+    return Response(content="true", media_type="text/plain")
 
 @app.post("/parse")
 async def parse_pdf(file: UploadFile = File(...)):

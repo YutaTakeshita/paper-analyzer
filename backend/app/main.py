@@ -86,7 +86,7 @@ async def cermine_process(file: UploadFile = File(...)):
     try:
         with open(tmp_path, "rb") as f:
             resp = requests.post(
-                f"{CERMINE_API_URL}/api/process",
+                f"{CERMINE_API_URL}/api/parse",
                 files={"input": (file.filename, f, "application/pdf")},
                 timeout=120
             )
