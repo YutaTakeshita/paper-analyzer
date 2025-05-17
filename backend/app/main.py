@@ -18,11 +18,11 @@ import uuid
 from google.cloud import storage, firestore
 from googleapiclient.discovery import build
 
-GROBID_URL = os.getenv("GROBID_API_BASE_URL", "https://cloud.grobid.org")
+CERMINE_API_URL = os.environ["CERMINE_API_URL"]
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn.error")
-logger.info(f"Using GROBID_URL={GROBID_URL}")
+logger.info(f"Using CERMINE_API_URL={CERMINE_API_URL}")
 
 # CORS middleware for local development
 app.add_middleware(
@@ -54,31 +54,31 @@ JOB_NAME   = "cermine-worker"
 async def health():
     return {"status": "ok"}
 
-@app.get("/grobid/isalive")
-async def grobid_isalive():
+@app.get("/cermine/isalive")
+async def cermine_isalive():
     # Cold start や一時的な遅延に備えてリトライを行う
     for attempt in range(3):
         try:
             # タイムアウトを 30 秒に延長
-            resp = requests.get(f"{GROBID_URL}/api/isalive", timeout=30)
+            resp = requests.get(f"{CERMINE_API_URL}/api/isalive", timeout=30)
             resp.raise_for_status()
             if "true" in resp.text.lower():
                 return {"grobid": "alive"}
-            raise HTTPException(status_code=502, detail="Unexpected response from GROBID")
+            raise HTTPException(status_code=502, detail="Unexpected response from CERMINE")
         except requests.exceptions.RequestException as e:
             # 最大 3 回まで、2 秒待って再試行
             if attempt < 2:
                 time.sleep(2)
                 continue
             # すべて失敗したら 502 を返却
-            logger.error(f"Error in /grobid/isalive after retries: {e}", exc_info=True)
+            logger.error(f"Error in /cermine/isalive after retries: {e}", exc_info=True)
             raise HTTPException(
                 status_code=502,
-                detail=f"GROBID service unavailable: {e}"
+                detail=f"CERMINE service unavailable: {e}"
             )
 
-@app.post("/grobid/process")
-async def grobid_process(file: UploadFile = File(...)):
+@app.post("/cermine/process")
+async def cermine_process(file: UploadFile = File(...)):
     suffix = os.path.splitext(file.filename)[1] or ".pdf"
     tmp_path = f"/tmp/{file.filename}"
     with open(tmp_path, "wb") as tmp:
@@ -86,7 +86,7 @@ async def grobid_process(file: UploadFile = File(...)):
     try:
         with open(tmp_path, "rb") as f:
             resp = requests.post(
-                f"{GROBID_URL}/api/processFulltextDocument",
+                f"{CERMINE_API_URL}/api/processFulltextDocument",
                 files={"input": (file.filename, f, "application/pdf")},
                 timeout=120
             )
@@ -95,20 +95,20 @@ async def grobid_process(file: UploadFile = File(...)):
             except requests.HTTPError as e:
                 # Return a clear error if the PDF conversion failed
                 detail_msg = resp.text or str(e)
-                raise HTTPException(status_code=502, detail=f"GROBID process error: {detail_msg}")
+                raise HTTPException(status_code=502, detail=f"CERMINE process error: {detail_msg}")
         if resp.status_code == 200:
             return {"tei": resp.text}
-        logger.error(f"GROBID returned status {resp.status_code}: {resp.text}")
-        raise HTTPException(status_code=502, detail=f"GROBID process error: {resp.status_code}")
+        logger.error(f"CERMINE returned status {resp.status_code}: {resp.text}")
+        raise HTTPException(status_code=502, detail=f"CERMINE process error: {resp.status_code}")
     except requests.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"GROBID connection error: {e}")
+        raise HTTPException(status_code=502, detail=f"CERMINE connection error: {e}")
     finally:
         os.remove(tmp_path)
 
-@app.post("/grobid/parse")
-async def grobid_parse(file: UploadFile = File(...)):
+@app.post("/cermine/parse")
+async def cermine_parse(file: UploadFile = File(...)):
     try:
-        result = await grobid_process(file)
+        result = await cermine_process(file)
         tei_xml = result.get("tei", "")
         sections = extract_sections_from_tei(tei_xml)
         if not sections:
@@ -116,7 +116,7 @@ async def grobid_parse(file: UploadFile = File(...)):
             sections = {"FullText": tei_xml}
         return {"sections": sections}
     except Exception as e:
-        logger.error("Error in grobid_parse:", exc_info=True)
+        logger.error("Error in cermine_parse:", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 class SummarizeRequest(BaseModel):

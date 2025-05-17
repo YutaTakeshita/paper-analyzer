@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+if [ -z "$1" ]; then
+  echo "Usage: entrypoint.sh gs://bucket/file.pdf"
+  exit 1
+fi
+
+PDF_URI="$1"
+TMP_DIR=$(mktemp -d)
+trap 'rm -rf "${TMP_DIR}"' EXIT
+
+echo "Copying ${PDF_URI} ..."
+gsutil cp "${PDF_URI}" "${TMP_DIR}/"
+
+echo "Running CERMINE ..."
+java -cp /cermine.jar pl.edu.icm.cermine.ContentExtractor \
+     -path "${TMP_DIR}" \
+     -outputs jats \
+     -exts xml
+
+OUT_XML=$(ls "${TMP_DIR}"/*.xml | head -n 1)
+if [ ! -f "${OUT_XML}" ]; then
+  echo "JATS output not found—conversion failed."
+  exit 1
+fi
+
+DEST_URI="${PDF_URI%.pdf}.xml"
+echo "Uploading to ${DEST_URI} ..."
+gsutil cp "${OUT_XML}" "${DEST_URI}"
+# Update Firestore status to 'done'
+python3 - <<EOF
+from google.cloud import firestore
+# Extract job ID from DEST_URI (gs://.../<jobid>.xml)
+job_id="${DEST_URI##*/}"
+job_id="${job_id%.xml}"
+firestore.Client().collection("jobs").document(job_id).update({"status":"done"})
+EOF
+echo "✅ Finished successfully."

@@ -48,4 +48,4 @@ grobid-home/tmp/
 *.pem
 
 grobid-service/*.jar
-grobid-service/build/
+grobid-service/build/node_modules/
