@@ -17,6 +17,23 @@ CERMINE_TIMEOUT = int(os.getenv("CERMINE_TIMEOUT", "300"))
 async def health():
     return {"status": "ok"}
 
+
+# Health-check endpoint for compatibility.
+@app.get("/isalive")
+async def isalive():
+    """
+    Health-check endpoint for compatibility.
+    """
+    return {"status": "alive"}
+
+# API-prefixed health-check endpoint.
+@app.get("/api/isalive")
+async def api_isalive():
+    """
+    API-prefixed health-check endpoint.
+    """
+    return await isalive()
+
 @app.post("/parse")
 async def parse_pdf(file: UploadFile = File(...)):
     # Create a unique working directory

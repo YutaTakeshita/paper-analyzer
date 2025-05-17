@@ -50,34 +50,34 @@ LOCATION   = "asia-northeast1"
 JOB_NAME   = "cermine-worker"
 # —————————————————————————
 
-@app.get("/health")
+@app.get("/api/health")
 async def health():
     return {"status": "ok"}
 
-@app.get("/cermine/isalive")
+@app.get("/api/cermine/isalive")
 async def cermine_isalive():
     # Cold start や一時的な遅延に備えてリトライを行う
     for attempt in range(3):
         try:
             # タイムアウトを 30 秒に延長
-            resp = requests.get(f"{CERMINE_API_URL}/isalive", timeout=30)
+            resp = requests.get(f"{CERMINE_API_URL}/api/isalive", timeout=30)
             resp.raise_for_status()
             if "true" in resp.text.lower():
-                return {"grobid": "alive"}
-            raise HTTPException(status_code=502, detail="Unexpected response from CERMINE at /isalive")
+                return {"cermine": "alive"}
+            raise HTTPException(status_code=502, detail="Unexpected response from CERMINE at /api/isalive")
         except requests.exceptions.RequestException as e:
             # 最大 3 回まで、2 秒待って再試行
             if attempt < 2:
                 time.sleep(2)
                 continue
             # すべて失敗したら 502 を返却
-            logger.error(f"Error in /cermine/isalive after retries: {e}", exc_info=True)
+            logger.error(f"Error in /api/cermine/isalive after retries: {e}", exc_info=True)
             raise HTTPException(
                 status_code=502,
                 detail=f"CERMINE service unavailable: {e}"
             )
 
-@app.post("/cermine/process")
+@app.post("/api/cermine/process")
 async def cermine_process(file: UploadFile = File(...)):
     suffix = os.path.splitext(file.filename)[1] or ".pdf"
     tmp_path = f"/tmp/{file.filename}"
@@ -86,7 +86,7 @@ async def cermine_process(file: UploadFile = File(...)):
     try:
         with open(tmp_path, "rb") as f:
             resp = requests.post(
-                f"{CERMINE_API_URL}/processFulltextDocument",
+                f"{CERMINE_API_URL}/api/processFulltextDocument",
                 files={"input": (file.filename, f, "application/pdf")},
                 timeout=120
             )
@@ -105,7 +105,7 @@ async def cermine_process(file: UploadFile = File(...)):
     finally:
         os.remove(tmp_path)
 
-@app.post("/cermine/parse")
+@app.post("/api/cermine/parse")
 async def cermine_parse(file: UploadFile = File(...)):
     try:
         result = await cermine_process(file)
@@ -169,7 +169,7 @@ async def tts(request: dict):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Polly error: {e}")
 
-@app.post("/cermine/upload")
+@app.post("/api/cermine/upload")
 async def cermine_upload(file: UploadFile = File(...)):
     """
     Upload PDF → GCS → Firestore(pending) → Cloud Run Job
@@ -199,7 +199,7 @@ async def cermine_upload(file: UploadFile = File(...)):
 
     return {"jobId": job_id}
 
-@app.get("/cermine/status")
+@app.get("/api/cermine/status")
 async def cermine_status(jobId: str):
     """
     Return job status from Firestore.
