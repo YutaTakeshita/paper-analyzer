@@ -1,6 +1,19 @@
+# Web フレームワーク
 fastapi
 uvicorn[standard]
-boto3
-openai
-python-multipart
+
+#FastAPI のファイル受け取り用
+python-multipart 
+
+#.env ロード用         
+python-dotenv            
 requests
+
+# OpenAI・AWS Polly
+openai
+boto3
+
+# GCP クライアント
+google-cloud-storage>=2.0.0
+google-cloud-firestore>=2.0.0
+google-api-python-client>=2.0.0

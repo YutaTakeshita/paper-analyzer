@@ -14,6 +14,9 @@ from .utils import extract_sections_from_tei
 from pydantic import BaseModel
 from typing import Optional
 import logging
+import uuid
+from google.cloud import storage, firestore
+from googleapiclient.discovery import build
 
 GROBID_URL = os.getenv("GROBID_API_BASE_URL", "https://cloud.grobid.org")
 
@@ -34,6 +37,18 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 # Initialize Polly client, defaulting to ap-northeast-1 if AWS_REGION is unset
 aws_region = os.getenv("AWS_REGION", "ap-northeast-1")
 polly = boto3.client("polly", region_name=aws_region)
+
+# —————————————————————————
+# GCP clients for CERMINE workflow
+storage_client   = storage.Client()
+firestore_client = firestore.Client()
+run_client       = build("run", "v2")
+
+# Replace <YOUR_PROJECT_ID> with your GCP project ID or set via env var GCP_PROJECT
+PROJECT_ID = os.getenv("GCP_PROJECT", "<YOUR_PROJECT_ID>")
+LOCATION   = "asia-northeast1"
+JOB_NAME   = "cermine-worker"
+# —————————————————————————
 
 @app.get("/health")
 async def health():
@@ -153,3 +168,49 @@ async def tts(request: dict):
         return Response(content=audio_stream, media_type="audio/mpeg")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Polly error: {e}")
+
+@app.post("/cermine/upload")
+async def cermine_upload(file: UploadFile = File(...)):
+    """
+    Upload PDF → GCS → Firestore(pending) → Cloud Run Job
+    """
+    job_id  = uuid.uuid4().hex
+    tmp_pdf = f"/tmp/{job_id}.pdf"
+    with open(tmp_pdf, "wb") as f:
+        f.write(await file.read())
+
+    # 1) Upload to GCS
+    bucket = storage_client.bucket("cermine_paket")
+    blob   = bucket.blob(f"{job_id}.pdf")
+    blob.upload_from_filename(tmp_pdf)
+
+    # 2) Register pending job in Firestore
+    firestore_client.collection("jobs").document(job_id).set({
+        "status": "pending",
+        "pdfPath": f"gs://cermine_paket/{job_id}.pdf"
+    })
+
+    # 3) Invoke Cloud Run Job
+    parent = f"projects/{PROJECT_ID}/locations/{LOCATION}/jobs/{JOB_NAME}"
+    run_client.projects().locations().jobs().executions().create(
+        parent=parent,
+        body={"execution": {"arguments": [f"gs://cermine_paket/{job_id}.pdf"]}}
+    ).execute()
+
+    return {"jobId": job_id}
+
+@app.get("/cermine/status")
+async def cermine_status(jobId: str):
+    """
+    Return job status from Firestore.
+    If done, include downloadUrl for the resulting XML.
+    """
+    doc = firestore_client.collection("jobs").document(jobId).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Job not found")
+    data   = doc.to_dict()
+    status = data.get("status", "unknown")
+    result = {"status": status}
+    if status == "done":
+        result["downloadUrl"] = f"https://storage.googleapis.com/cermine_paket/{jobId}.xml"
+    return result
