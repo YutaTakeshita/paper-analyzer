@@ -7,16 +7,19 @@ RUN apt-get update \
 RUN curl -L -o /cermine.jar \
     https://storage.googleapis.com/cermine-assets/cermine.jar
 
-# Stage 2: Build Python HTTP service
-FROM python:3.11-slim
+FROM python:3.11-slim AS runner
 WORKDIR /app
-
+# Install Python runtime and pip
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends default-jre-headless python3-pip \
+ && rm -rf /var/lib/apt/lists/*
+# Copy CERMINE jar from the first stage
+COPY --from=cermine /cermine.jar /app/cermine.jar
+ENV CERMINE_JAR_PATH=/app/cermine.jar
 # Copy and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir requests
-
-# Copy application code and CERMINE jar
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+# Copy application code
 COPY . .
 
 # Expose HTTP port
