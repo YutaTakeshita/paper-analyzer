@@ -64,7 +64,7 @@ async def cermine_isalive():
             resp.raise_for_status()
             if "true" in resp.text.lower():
                 return {"grobid": "alive"}
-            raise HTTPException(status_code=502, detail="Unexpected response from CERMINE")
+            raise HTTPException(status_code=502, detail="Unexpected response from CERMINE at /isalive")
         except requests.exceptions.RequestException as e:
             # 最大 3 回まで、2 秒待って再試行
             if attempt < 2:
