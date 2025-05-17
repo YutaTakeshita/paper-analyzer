@@ -7,6 +7,8 @@ import styles from './page.module.css'
 export default function Home() {
   const [file, setFile] = useState(null)
   const [sections, setSections] = useState(null)
+  const [jobId, setJobId] = useState(null)
+  const [status, setStatus] = useState(null)
   // 目次用に全セクション名を取得
   const sectionNames = sections ? Object.keys(sections) : []
   const [error, setError] = useState(null)
@@ -16,6 +18,11 @@ export default function Home() {
   const [loadingAudio, setLoadingAudio] = useState({})
   const [expanded, setExpanded] = useState({})
   const [showBackButton, setShowBackButton] = useState(false);
+
+  // Log backend URL to verify environment variable
+  useEffect(() => {
+    console.log("BACKEND_URL:", process.env.NEXT_PUBLIC_BACKEND_URL);
+  }, []);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -40,66 +47,69 @@ export default function Home() {
       return
     }
     setError(null)
+    // start a new CERMINE job
     const form = new FormData()
     form.append('file', file)
     try {
       const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE}/grobid/parse`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/cermine/upload`,
         form
       )
-      // Link citation numbers to References section anchors
-      const rawSections = res.data.sections
-      const linkedSections = {}
-      Object.entries(rawSections).forEach(([name, html]) => {
-        // Wrap <sup class="citation">N</sup> with an anchor to #refN
-        const newHtml = html.replace(
-          /<sup\s+[^>]*class=['"]citation['"][^>]*>\s*(\d+)[^<]*<\/sup>/gi,
-          (_, num) => `<sup class="citation"><a href="#ref${num}">${num}</a></sup>`
-        );
-        linkedSections[name] = newHtml
-      })
-      setSections(linkedSections)
+      const { jobId } = res.data
+      setJobId(jobId)
+      setStatus('processing')
+      setSections(null)
+      setSummaries({})
+      setAudioUrls({})
     } catch (err) {
-      setError('アップロードまたは解析でエラーが発生しました')
+      setError('アップロードに失敗しました')
       console.error(err)
     }
   }
 
-  async function handleSummarize(name, text) {
-    setLoadingSummaries(prev => ({ ...prev, [name]: true }))
-    try {
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE}/summarize`,
-        { text }
-      )
-      setSummaries(prev => ({ ...prev, [name]: res.data.summary }))
-    } catch (err) {
-      console.error(err)
-      setSummaries(prev => ({ ...prev, [name]: '要約取得エラー' }))
-    } finally {
-      setLoadingSummaries(prev => ({ ...prev, [name]: false }))
+  // Poll job status when a job is running
+  useEffect(() => {
+    let interval
+    if (jobId) {
+      interval = setInterval(async () => {
+        try {
+          const res = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/cermine/status/${jobId}`
+          )
+          if (res.data.status === 'done') {
+            clearInterval(interval)
+            setStatus('done')
+            // fetch result
+            const result = await axios.get(
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/cermine/download/${jobId}`
+            )
+            const rawSections = result.data.sections
+            // apply citation linking
+            const linkedSections = {}
+            Object.entries(rawSections).forEach(([name, html]) => {
+              const newHtml = html.replace(
+                /<sup\s+[^>]*class=['"]citation['"][^>]*>\s*(\d+)[^<]*<\/sup>/gi,
+                (_, num) => `<sup class="citation"><a href="#ref${num}">${num}</a></sup>`
+              )
+              linkedSections[name] = newHtml
+            })
+            setSections(linkedSections)
+            setJobId(null)
+          }
+        } catch (err) {
+          console.error('ステータス取得エラー', err)
+          clearInterval(interval)
+          setJobId(null)
+          setError('処理中にエラーが発生しました')
+        }
+      }, 2000)
     }
-  }
-
-  async function handleTTS(name, text) {
-    setLoadingAudio(prev => ({ ...prev, [name]: true }))
-    try {
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE}/tts`,
-        { text },
-        { responseType: 'blob' }
-      )
-      const url = URL.createObjectURL(new Blob([res.data], { type: 'audio/mpeg' }))
-      setAudioUrls(prev => ({ ...prev, [name]: url }))
-    } catch (err) {
-      console.error('TTS failed:', err)
-    } finally {
-      setLoadingAudio(prev => ({ ...prev, [name]: false }))
-    }
-  }
+    return () => clearInterval(interval)
+  }, [jobId])
 
   return (
     <main className={styles.main}>
+      {status === 'processing' && <p>処理中です…</p>}
       <div className={styles.header}>
         <h1>Paper Analyzer</h1>
         <p className={styles.description}>
@@ -116,6 +126,8 @@ export default function Home() {
         />
         <button type="submit">Upload &amp; Parse</button>
       </form>
+
+      {status === 'processing' && <div className={styles.spinner}>Loading...</div>}
 
       {sectionNames.length > 0 && (
         <details className={styles.toc} open>
