@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+import requests
 import shutil
 import subprocess
 import uuid
@@ -12,25 +14,12 @@ CERMINE_JAR = os.getenv("CERMINE_JAR_PATH", "/cermine.jar")
 # How long (in seconds) to allow CERMINE to run
 CERMINE_TIMEOUT = int(os.getenv("CERMINE_TIMEOUT", "300"))
 
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-
-
-# Health-check endpoint for compatibility.
 @app.get("/isalive")
 async def isalive():
-    """
-    Health-check endpoint for compatibility.
-    """
     return {"status": "alive"}
 
-# API-prefixed health-check endpoint.
 @app.get("/api/isalive")
 async def api_isalive():
-    """
-    API-prefixed health-check endpoint.
-    """
     return await isalive()
 
 @app.post("/parse")
