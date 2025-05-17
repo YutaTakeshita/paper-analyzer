@@ -60,7 +60,7 @@ async def cermine_isalive():
     for attempt in range(3):
         try:
             # タイムアウトを 30 秒に延長
-            resp = requests.get(f"{CERMINE_API_URL}/api/isalive", timeout=30)
+            resp = requests.get(f"{CERMINE_API_URL}/isalive", timeout=30)
             resp.raise_for_status()
             if "true" in resp.text.lower():
                 return {"grobid": "alive"}
@@ -86,7 +86,7 @@ async def cermine_process(file: UploadFile = File(...)):
     try:
         with open(tmp_path, "rb") as f:
             resp = requests.post(
-                f"{CERMINE_API_URL}/api/processFulltextDocument",
+                f"{CERMINE_API_URL}/processFulltextDocument",
                 files={"input": (file.filename, f, "application/pdf")},
                 timeout=120
             )
