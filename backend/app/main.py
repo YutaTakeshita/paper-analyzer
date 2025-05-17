@@ -18,7 +18,7 @@ import uuid
 from google.cloud import storage, firestore
 from googleapiclient.discovery import build
 
-CERMINE_API_URL = os.environ["CERMINE_API_URL"]
+CERMINE_API_URL = os.environ["CERMINE_API_URL"].rstrip('/')
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn.error")
@@ -54,7 +54,7 @@ JOB_NAME   = "cermine-worker"
 async def health():
     return {"status": "ok"}
 
-@app.get("/api/cermine/isalive")
+@app.get("/api/isalive")
 async def cermine_isalive():
     # Cold start や一時的な遅延に備えてリトライを行う
     for attempt in range(3):
@@ -71,13 +71,13 @@ async def cermine_isalive():
                 time.sleep(2)
                 continue
             # すべて失敗したら 502 を返却
-            logger.error(f"Error in /api/cermine/isalive after retries: {e}", exc_info=True)
+            logger.error(f"Error in /api/isalive after retries: {e}", exc_info=True)
             raise HTTPException(
                 status_code=502,
                 detail=f"CERMINE service unavailable: {e}"
             )
 
-@app.post("/api/cermine/process")
+@app.post("/api/process")
 async def cermine_process(file: UploadFile = File(...)):
     suffix = os.path.splitext(file.filename)[1] or ".pdf"
     tmp_path = f"/tmp/{file.filename}"
@@ -86,7 +86,7 @@ async def cermine_process(file: UploadFile = File(...)):
     try:
         with open(tmp_path, "rb") as f:
             resp = requests.post(
-                f"{CERMINE_API_URL}/api/processFulltextDocument",
+                f"{CERMINE_API_URL}/api/process",
                 files={"input": (file.filename, f, "application/pdf")},
                 timeout=120
             )
@@ -105,7 +105,7 @@ async def cermine_process(file: UploadFile = File(...)):
     finally:
         os.remove(tmp_path)
 
-@app.post("/api/cermine/parse")
+@app.post("/api/parse")
 async def cermine_parse(file: UploadFile = File(...)):
     try:
         result = await cermine_process(file)

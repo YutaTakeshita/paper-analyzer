@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 import shutil
 import subprocess
 import uuid
@@ -86,3 +85,11 @@ async def parse_pdf(file: UploadFile = File(...)):
     # Clean up
     shutil.rmtree(workdir)
     return {"jats": content}
+
+@app.post("/api/parse")
+async def api_parse_pdf(file: UploadFile = File(...)):
+    return await parse_pdf(file)
+
+@app.post("/api/jats")
+async def api_jats(file: UploadFile = File(...)):
+    return await parse_pdf(file)
