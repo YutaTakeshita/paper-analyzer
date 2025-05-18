@@ -52,3 +52,16 @@ def extract_xml_figures(root: etree._Element) -> List[Dict]:
         cap = " ".join(cap_el.itertext()) if cap_el is not None else ""
         figs.append({"id": fig_id, "caption": cap.strip()})
     return figs
+
+
+def extract_jats_references(root: etree._Element) -> List[Dict]:
+    """
+    <ref> 要素から参考文献の情報を抽出し、
+    [{"id": str, "text": str}, ...] のリストで返す。
+    """
+    refs = []
+    for ref in root.findall('.//ref'):
+        ref_id = ref.get('id')
+        ref_text = " ".join(ref.itertext()).strip()
+        refs.append({"id": ref_id, "text": ref_text})
+    return refs
