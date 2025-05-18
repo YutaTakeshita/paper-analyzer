@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
+
 set -eo pipefail
+
+# Ensure CERMINE_JAR_PATH is set (defaults to /app/cermine-impl-1.13-jar-with-dependencies.jar)
+: "${CERMINE_JAR_PATH:?Environment variable CERMINE_JAR_PATH must be set}"
 
 if [ -z "$1" ]; then
   echo "Usage: entrypoint.sh gs://bucket/file.pdf"
@@ -14,10 +18,9 @@ echo "Copying ${PDF_URI} ..."
 gsutil cp "${PDF_URI}" "${TMP_DIR}/"
 
 echo "Running CERMINE ..."
-java -cp /cermine.jar pl.edu.icm.cermine.ContentExtractor \
+java -jar "$CERMINE_JAR_PATH" \
      -path "${TMP_DIR}" \
-     -outputs jats \
-     -exts xml
+     -outputs jats
 
 OUT_XML=$(ls "${TMP_DIR}"/*.xml | head -n 1)
 if [ ! -f "${OUT_XML}" ]; then

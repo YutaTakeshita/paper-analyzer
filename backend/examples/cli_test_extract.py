@@ -1,8 +1,15 @@
 # test_extract.py
-import json
-from utils import extract_sections_from_tei
+import sys
+import os
+# Ensure project root is on PYTHONPATH
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
 
-sample_path = "sample_tei.xml"
+import json
+from app.utils import extract_sections_from_tei
+
+# Path to the sample TEI fixture
+sample_path = os.path.join(os.path.dirname(__file__), "fixtures", "sample_tei.xml")
 
 # ファイルを読み込む
 with open(sample_path, "r", encoding="utf-8") as f:

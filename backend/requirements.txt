@@ -2,18 +2,28 @@
 fastapi
 uvicorn[standard]
 
-#FastAPI のファイル受け取り用
-python-multipart 
+# ファイルアップロード／環境変数
+python-multipart
+python-dotenv
 
-#.env ロード用         
-python-dotenv            
+# XML パース
+lxml
+
+# PDF → 図表抽出
+pdfplumber
+tabula-py   # （要 JPype1: pip install JPype1）
+pandas
+Pillow      # pdfplumber で画像を扱う場合に必要
+
+# HTTP クライアント
 requests
 
-# OpenAI・AWS Polly
+# CERMINE から出力される XML を扱うために
+# （tei2json.py 内で使っている lxml と組み合わせて使えます）
+
+# 認証系・クラウド連携
 openai
 boto3
-
-# GCP クライアント
 google-cloud-storage>=2.0.0
 google-cloud-firestore>=2.0.0
 google-api-python-client>=2.0.0

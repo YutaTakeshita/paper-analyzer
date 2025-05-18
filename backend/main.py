@@ -1,0 +1,225 @@
+# backend/app/main.py
+import os
+import time
+import uuid
+import shutil
+import subprocess
+import logging
+from io import BytesIO
+
+import requests
+import openai
+import boto3
+import urllib3
+from fastapi import FastAPI, HTTPException, File, UploadFile, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from typing import Optional
+
+# TEI/JSON orchestrator and utilities
+from app.tei_utils import extract_sections_from_tei, extract_meta, extract_references
+from app.pdf_utils import extract_figures_from_pdf, extract_tables_from_pdf
+from app.tei2json import convert_xml_to_json
+
+# ─── 環境変数・クライアント初期化 ──────────────────────────────────────
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+load_env = __import__("dotenv").load_dotenv
+load_env()
+
+app = FastAPI(title="Paper Analyzer API")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("uvicorn.error")
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# OpenAI
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# AWS Polly
+aws_region = os.getenv("AWS_REGION", "ap-northeast-1")
+polly = boto3.client("polly", region_name=aws_region)
+
+# GCP clients
+from google.cloud import storage, firestore
+from googleapiclient.discovery import build
+
+storage_client   = storage.Client()
+firestore_client = firestore.Client()
+run_client       = build("run", "v2")
+
+PROJECT_ID = os.getenv("GCP_PROJECT", "<YOUR_PROJECT_ID>")
+LOCATION   = "asia-northeast1"
+JOB_NAME   = "cermine-worker"
+
+# CERMINE 設定
+CERMINE_JAR     = os.getenv("CERMINE_JAR_PATH", "/cermine-impl-1.13-jar-with-dependencies.jar")
+CERMINE_TIMEOUT = int(os.getenv("CERMINE_TIMEOUT", "300"))
+
+# 外部 CERMINE API（既存クラウド）URL
+CERMINE_API_URL = os.getenv("CERMINE_API_URL", "").rstrip("/")
+
+# ─── ヘルスチェック ───────────────────────────────────────────────────
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+@app.get("/isalive")
+async def isalive():
+    return {"status": "alive"}
+
+@app.get("/api/isalive")
+async def api_isalive():
+    return Response(content="true", media_type="text/plain")
+
+# ─── 外部 CERMINE API 経由パススルー ─────────────────────────────────
+@app.get("/api/cermine/isalive")
+async def cermine_api_isalive():
+    for attempt in range(3):
+        try:
+            resp = requests.get(f"{CERMINE_API_URL}/api/isalive", timeout=30)
+            resp.raise_for_status()
+            if "true" in resp.text.lower():
+                return {"cermine": "alive"}
+            raise HTTPException(502, "Unexpected CERMINE response")
+        except Exception as e:
+            if attempt < 2:
+                time.sleep(2)
+                continue
+            logger.error("CERMINE isalive failed", exc_info=True)
+            raise HTTPException(502, detail=str(e))
+
+@app.post("/api/cermine/parse")
+async def cermine_api_parse(file: UploadFile = File(...)):
+    tmp = f"/tmp/{uuid.uuid4().hex}.pdf"
+    with open(tmp, "wb") as f:
+        f.write(await file.read())
+    try:
+        with open(tmp, "rb") as f:
+            resp = requests.post(
+                f"{CERMINE_API_URL}/api/parse",
+                files={"file": (file.filename, f, "application/pdf")},
+                timeout=120
+            )
+            resp.raise_for_status()
+        return {"tei": resp.text}
+    except Exception as e:
+        raise HTTPException(502, detail=str(e))
+    finally:
+        os.remove(tmp)
+
+async def run_cermine(file: UploadFile):
+    # ワークディレクトリ
+    job_id = uuid.uuid4().hex
+    workdir = f"/tmp/{job_id}"
+    os.makedirs(workdir, exist_ok=True)
+
+    try:
+        pdf_path = os.path.join(workdir, file.filename)
+        with open(pdf_path, "wb") as f:
+            f.write(await file.read())
+
+        cmd = ["java", "-jar", CERMINE_JAR, "-path", workdir, "-outputs", "jats"]
+        subprocess.run(cmd, check=True, stderr=subprocess.PIPE, timeout=CERMINE_TIMEOUT)
+
+        # 出力 XML 検出
+        output_file = next(
+            (os.path.join(workdir, n) for n in os.listdir(workdir)
+             if n.lower().endswith((".xml", ".cermxml", ".nxml"))),
+            None
+        )
+        if not output_file:
+            raise HTTPException(500, "No CERMINE output")
+
+        tei_xml = open(output_file, encoding="utf-8").read()
+        json_obj = convert_xml_to_json(tei_xml, pdf_path)
+        return JSONResponse(content=json_obj)
+
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "CERMINE timed out")
+    except subprocess.CalledProcessError as e:
+        err = e.stderr.decode(errors="ignore")
+        logger.error("CERMINE error: %s", err)
+        raise HTTPException(500, detail=err)
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+@app.post("/cermine/parse")
+async def cermine_parse_internal(file: UploadFile = File(...)):
+    return await run_cermine(file)
+
+# ─── TEI 解析 + セクション抽出 ─────────────────────────────────────────
+@app.post("/api/parse")
+async def api_parse(file: UploadFile = File(...)):
+    # Choose external API or local CERMINE
+    if CERMINE_API_URL:
+        resp = await cermine_api_parse(file)
+        tei_xml = resp["tei"]
+    else:
+        result = await run_cermine(file)
+        tei_xml = result.body.decode() if isinstance(result, Response) else result["body"]
+
+    json_obj = convert_xml_to_json(tei_xml, None)
+    return JSONResponse(content=json_obj)
+
+# ─── 要約 ─────────────────────────────────────────────────────────────
+class SummarizeRequest(BaseModel):
+    text: str
+    max_tokens: Optional[int] = 1500
+
+@app.post("/summarize")
+async def summarize(req: SummarizeRequest):
+    resp = openai.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role":"system","content":"あなたは…"}, {"role":"user","content":req.text}],
+        max_tokens=req.max_tokens
+    )
+    return {"summary": resp.choices[0].message.content.strip()}
+
+# ─── TTS ──────────────────────────────────────────────────────────────
+@app.post("/tts")
+async def tts(body: dict):
+    text = body.get("text") or ""
+    if not text:
+        raise HTTPException(400, "Field 'text' is required")
+    audio = polly.synthesize_speech(Text=text, OutputFormat="mp3", VoiceId="Mizuki")["AudioStream"].read()
+    return Response(content=audio, media_type="audio/mpeg")
+
+# ─── GCS アップロード & Cloud Run Job ─────────────────────────────────
+@app.post("/api/cermine/upload")
+async def cermine_upload(file: UploadFile = File(...)):
+    job_id = uuid.uuid4().hex
+    tmp_pdf = f"/tmp/{job_id}.pdf"
+    with open(tmp_pdf, "wb") as f:
+        f.write(await file.read())
+    bucket = storage_client.bucket("cermine_paket")
+    blob = bucket.blob(f"{job_id}.pdf")
+    blob.upload_from_filename(tmp_pdf)
+    firestore_client.collection("jobs").document(job_id).set({
+        "status": "pending",
+        "pdfPath": f"gs://cermine_paket/{job_id}.pdf"
+    })
+    parent = f"projects/{PROJECT_ID}/locations/{LOCATION}/jobs/{JOB_NAME}"
+    run_client.projects().locations().jobs().executions().create(
+        parent=parent,
+        body={"execution": {"arguments": [f"gs://cermine_paket/{job_id}.pdf"]}}
+    ).execute()
+    return {"jobId": job_id}
+
+@app.get("/api/cermine/status")
+async def cermine_status(jobId: str):
+    doc = firestore_client.collection("jobs").document(jobId).get()
+    if not doc.exists:
+        raise HTTPException(404, "Job not found")
+    data = doc.to_dict()
+    status = data.get("status", "unknown")
+    res = {"status": status}
+    if status == "done":
+        res["downloadUrl"] = f"https://storage.googleapis.com/cermine_paket/{jobId}.xml"
+    return res
