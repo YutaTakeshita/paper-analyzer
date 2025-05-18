@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 # TEI/JSON orchestrator and utilities
-from app.tei_utils import extract_sections_from_tei, extract_meta, extract_references
+from app.tei_utils import extract_jats_sections, extract_meta, extract_jats_references
 from app.pdf_utils import extract_figures_from_pdf, extract_tables_from_pdf
 from app.tei2json import convert_xml_to_json
 
