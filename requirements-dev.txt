@@ -1,0 +1,4 @@
+pytest
+pdfplumber
+tabula-py[jpype]
+pillow

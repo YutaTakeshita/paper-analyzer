@@ -16,9 +16,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
+from lxml import etree
 
 # TEI/JSON orchestrator and utilities
-from app.tei_utils import extract_jats_sections, extract_meta, extract_jats_references
+from app.tei_utils import extract_jats_sections, extract_jats_references
+from app.meta_utils import extract_meta
 from app.pdf_utils import extract_figures_from_pdf, extract_tables_from_pdf
 from app.tei2json import convert_xml_to_json
 
@@ -114,8 +116,8 @@ async def cermine_api_parse(file: UploadFile = File(...)):
     finally:
         os.remove(tmp)
 
+# ─── CERMINE JAR ローカル実行 ───────────────────────────────────────────
 async def run_cermine(file: UploadFile):
-    # ワークディレクトリ
     job_id = uuid.uuid4().hex
     workdir = f"/tmp/{job_id}"
     os.makedirs(workdir, exist_ok=True)
@@ -128,7 +130,6 @@ async def run_cermine(file: UploadFile):
         cmd = ["java", "-jar", CERMINE_JAR, "-path", workdir, "-outputs", "jats"]
         subprocess.run(cmd, check=True, stderr=subprocess.PIPE, timeout=CERMINE_TIMEOUT)
 
-        # 出力 XML 検出
         output_file = next(
             (os.path.join(workdir, n) for n in os.listdir(workdir)
              if n.lower().endswith((".xml", ".cermxml", ".nxml"))),
@@ -138,8 +139,17 @@ async def run_cermine(file: UploadFile):
             raise HTTPException(500, "No CERMINE output")
 
         tei_xml = open(output_file, encoding="utf-8").read()
-        json_obj = convert_xml_to_json(tei_xml, pdf_path)
-        return JSONResponse(content=json_obj)
+        print("tei_xml:", repr(tei_xml[:500]))
+        if not tei_xml.strip():
+            raise HTTPException(500, "CERMINE output XML is empty")
+
+        if tei_xml.lstrip().startswith("{"):
+            import json
+            try:
+                return json.loads(tei_xml)
+            except Exception as e:
+                raise HTTPException(500, f"Invalid JSON output from CERMINE: {str(e)}")
+        return tei_xml
 
     except subprocess.TimeoutExpired:
         raise HTTPException(504, "CERMINE timed out")
@@ -154,19 +164,80 @@ async def run_cermine(file: UploadFile):
 async def cermine_parse_internal(file: UploadFile = File(...)):
     return await run_cermine(file)
 
-# ─── TEI 解析 + セクション抽出 ─────────────────────────────────────────
+# ─── TEI 解析 + PDF・図表・セクション抽出 ─────────────────────────────────
 @app.post("/api/parse")
 async def api_parse(file: UploadFile = File(...)):
-    # Choose external API or local CERMINE
+    print("DEBUG: Using external CERMINE API" if CERMINE_API_URL else "DEBUG: Using local JAR")
     if CERMINE_API_URL:
         resp = await cermine_api_parse(file)
-        tei_xml = resp["tei"]
-    else:
-        result = await run_cermine(file)
-        tei_xml = result.body.decode() if isinstance(result, Response) else result["body"]
+        try:
+            json_obj = resp['tei']
+            if isinstance(json_obj, str):
+                import json
+                json_obj = json.loads(json_obj)
+        except Exception as e:
+            raise HTTPException(500, f"parse external CERMINE API JSON failed: {e}")
+        return JSONResponse(content=json_obj)
 
-    json_obj = convert_xml_to_json(tei_xml, None)
-    return JSONResponse(content=json_obj)
+    job_id  = uuid.uuid4().hex
+    workdir = f"/tmp/{job_id}"
+    os.makedirs(workdir, exist_ok=True)
+    try:
+        content = await file.read()
+        pdf_path = os.path.join(workdir, file.filename)
+        with open(pdf_path, 'wb') as f:
+            f.write(content)
+
+        if not CERMINE_JAR:
+            raise HTTPException(500, detail="CERMINE_JAR_PATH is not set")
+        cmd = ["java", "-jar", CERMINE_JAR, "-path", workdir, "-outputs", "jats"]
+        subprocess.run(cmd, check=True, stderr=subprocess.PIPE, timeout=CERMINE_TIMEOUT)
+
+        # Debug: list all files in workdir to see CERMINE outputs
+        logger.debug("Workdir contents: %s", os.listdir(workdir))
+        # Accept XML, CERMXML, and NXML extensions
+        xml_file = next(
+            (os.path.join(workdir, fn) for fn in os.listdir(workdir)
+             if fn.lower().endswith(('.xml', '.cermxml', '.nxml'))),
+            None
+        )
+        if not xml_file:
+            raise HTTPException(500, detail="No CERMINE output XML")
+
+        tei_xml = open(xml_file, encoding='utf-8').read()
+        try:
+            root = etree.fromstring(tei_xml)
+        except Exception as e:
+            raise HTTPException(500, detail=f"Invalid XML from CERMINE: {e}")
+
+        meta      = extract_meta(root)
+        figures   = extract_figures_from_pdf(pdf_path)
+        tables    = extract_tables_from_pdf(pdf_path)
+        json_body = convert_xml_to_json(tei_xml, pdf_path)
+
+        result = {
+            'meta':       meta,
+            'sections':   json_body.get('sections', []),
+            'references': json_body.get('references', []),
+            'figures':    figures,
+            'tables':     tables,
+        }
+        return JSONResponse(content=result)
+
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, detail="CERMINE timed out")
+    except subprocess.CalledProcessError as e:
+        err = e.stderr.decode(errors="ignore")
+        logger.error("CERMINE error: %s", err)
+        raise HTTPException(500, detail=err)
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log full stack trace for debugging
+        logger.exception("Unhandled exception in /api/parse")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
 
 # ─── 要約 ─────────────────────────────────────────────────────────────
 class SummarizeRequest(BaseModel):

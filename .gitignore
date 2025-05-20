@@ -49,3 +49,4 @@ grobid-home/tmp/
 
 grobid-service/*.jar
 grobid-service/build/node_modules/
+node_modules
