@@ -57,7 +57,12 @@ storage_client   = storage.Client()
 firestore_client = firestore.Client()
 run_client       = build("run", "v2")
 
-PROJECT_ID = os.getenv("GCP_PROJECT", "<YOUR_PROJECT_ID>")
+# GCP プロジェクト ID を環境変数から取得。未設定なら ADC から自動検出
+PROJECT_ID = os.getenv("GCP_PROJECT")
+if not PROJECT_ID:
+    import google.auth
+    _, PROJECT_ID = google.auth.default()
+
 LOCATION   = "asia-northeast1"
 JOB_NAME   = "cermine-worker"
 
@@ -278,10 +283,9 @@ async def cermine_upload(file: UploadFile = File(...)):
         "status": "pending",
         "pdfPath": f"gs://cermine_paket/{job_id}.pdf"
     })
-    parent = f"projects/{PROJECT_ID}/locations/{LOCATION}/jobs/{JOB_NAME}"
-    run_client.projects().locations().jobs().executions().create(
-        parent=parent,
-        body={"execution": {"arguments": [f"gs://cermine_paket/{job_id}.pdf"]}}
+    job_name = f"projects/{PROJECT_ID}/locations/{LOCATION}/jobs/{JOB_NAME}"
+    run_client.projects().locations().jobs().run(
+        name=job_name
     ).execute()
     return {"jobId": job_id}
 
