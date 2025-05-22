@@ -13,6 +13,7 @@ import boto3
 import urllib3
 from fastapi import FastAPI, HTTPException, File, UploadFile, Response
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 from lxml import etree
