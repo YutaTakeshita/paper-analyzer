@@ -3,6 +3,7 @@ import re
 from typing import List, Dict
 from lxml import etree
 from app.meta_utils import extract_meta as extract_meta_from_meta_utils
+from collections import defaultdict
 
 _NS_RE = re.compile(r'\s+xmlns(:\w+)?="[^"]+"')
 
@@ -39,3 +40,22 @@ def extract_jats_references(root: etree._Element) -> List[Dict]:
         ref_text = ' '.join(ref.itertext()).strip()
         refs.append({'id': ref_id, 'text': ref_text})
     return refs
+
+
+# New function: extract_figures_by_section
+def extract_figures_by_section(root: etree._Element) -> Dict[str, List[Dict]]:
+    """
+    <sec> 配下の <fig> 要素をセクション見出しごとにマッピングして返す。
+    { section_title: [ { "id": str, "caption": str }, ... ], ... }
+    """
+    mapping = defaultdict(list)
+    body = root.find('.//body')
+    if body is not None:
+        for sec in body.findall('sec'):
+            title = sec.findtext('title') or "__no_title__"
+            for fig in sec.findall('.//fig'):
+                fig_id = fig.get('id')
+                cap_el = fig.find('caption')
+                caption = " ".join(cap_el.itertext()).strip() if cap_el is not None else ""
+                mapping[title].append({"id": fig_id, "caption": caption})
+    return dict(mapping)

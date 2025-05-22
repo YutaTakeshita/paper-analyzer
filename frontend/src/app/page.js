@@ -9,8 +9,8 @@ export default function Home() {
   const [sections, setSections] = useState(null)
   const [jobId, setJobId] = useState(null)
   const [status, setStatus] = useState(null)
-  // 目次用に全セクション名を取得
-  const sectionNames = sections ? Object.keys(sections) : []
+  // 全セクション名を配列化し、目次表示に利用
+  const sectionNames = sections ? sections.map(sec => sec.head) : []
   const [error, setError] = useState(null)
   const [summaries, setSummaries] = useState({})
   const [loadingSummaries, setLoadingSummaries] = useState({})
@@ -52,7 +52,7 @@ export default function Home() {
     form.append('file', file)
     try {
       const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/cermine/upload`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/cermine/upload`,
         form
       )
       const { jobId } = res.data
@@ -67,33 +67,29 @@ export default function Home() {
     }
   }
 
-  // Poll job status when a job is running
+  // CERMINE ジョブの完了を 2 秒間隔でポーリング
   useEffect(() => {
     let interval
     if (jobId) {
       interval = setInterval(async () => {
         try {
           const res = await axios.get(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/cermine/status/${jobId}`
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/cermine/status?jobId=${jobId}`
           )
           if (res.data.status === 'done') {
             clearInterval(interval)
             setStatus('done')
-            // fetch result
-            const result = await axios.get(
-              `${process.env.NEXT_PUBLIC_BACKEND_URL}/cermine/download/${jobId}`
-            )
-            const rawSections = result.data.sections
-            // apply citation linking
-            const linkedSections = {}
-            Object.entries(rawSections).forEach(([name, html]) => {
-              const newHtml = html.replace(
+            // ジョブ完了時に downloadUrl から JSON を取得し、セクションを整形
+            const rawSections = (await axios.get(res.data.downloadUrl)).data.sections;
+            // 引用番号をクリック可能なリンクに加工
+            const linkedSections = rawSections.map(sec => {
+              const newHtml = sec.text.replace(
                 /<sup\s+[^>]*class=['"]citation['"][^>]*>\s*(\d+)[^<]*<\/sup>/gi,
                 (_, num) => `<sup class="citation"><a href="#ref${num}">${num}</a></sup>`
-              )
-              linkedSections[name] = newHtml
-            })
-            setSections(linkedSections)
+              );
+              return { head: sec.head, text: newHtml, figures: sec.figures || [] };
+            });
+            setSections(linkedSections);
             setJobId(null)
           }
         } catch (err) {
@@ -146,7 +142,10 @@ export default function Home() {
 
       {sections && (
         <div className={styles.results}>
-          {Object.entries(sections).map(([name, text]) => {
+          // 取得した各セクションをカード形式で描画
+          {sections.map(sec => {
+            const name = sec.head;
+            const text = sec.text;
             // References セクションかどうか判定
             const isReferenceSection =
               name.toLowerCase().includes('reference') ||
@@ -163,6 +162,18 @@ export default function Home() {
                       : (expanded[name] ? text : text.slice(0, 200) + '…')
                   }}
                 />
+                // このセクションに紐づく図表があれば表示
+                {sec.figures.length > 0 && (
+                  <div className={styles.figures}>
+                    <h3>Figures</h3>
+                    {sec.figures.map(f => (
+                      <figure key={f.id}>
+                        {/* If you have data_uri for each figure, use <img src={f.data_uri} /> */}
+                        <figcaption>{f.caption}</figcaption>
+                      </figure>
+                    ))}
+                  </div>
+                )}
                 {!isReferenceSection && (
                   <button
                     className={styles.readMoreButton}
