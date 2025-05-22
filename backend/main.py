@@ -36,10 +36,10 @@ logger = logging.getLogger("uvicorn.error")
 # CORS 設定: フロントエンドからのリクエストを許可
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],            # 全オリジン許可
-    allow_credentials=True,         # Cookie/認証情報を含むリクエストを許可
-    allow_methods=["*"],            # 全HTTPメソッド許可
-    allow_headers=["*"],            # 全ヘッダー許可
+    allow_origins=["*"],        # 全オリジンを許可
+    allow_credentials=True,     # Cookie/認証情報を許可
+    allow_methods=["*"],        # 全HTTPメソッドを許可（OPTIONS含む）
+    allow_headers=["*"],        # 全ヘッダーを許可
 )
 
 # OpenAI
@@ -177,6 +177,7 @@ async def api_parse(file: UploadFile = File(...)):
                 import json
                 json_obj = json.loads(json_obj)
         except Exception as e:
+            logger.exception("cermine_upload failed")
             raise HTTPException(500, f"parse external CERMINE API JSON failed: {e}")
         return JSONResponse(content=json_obj)
 
