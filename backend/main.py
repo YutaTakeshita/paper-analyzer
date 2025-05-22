@@ -33,12 +33,13 @@ app = FastAPI(title="Paper Analyzer API")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("uvicorn.error")
 
-# CORS
+# CORS 設定: フロントエンドからのリクエストを許可
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],            # 全オリジン許可
+    allow_credentials=True,         # Cookie/認証情報を含むリクエストを許可
+    allow_methods=["*"],            # 全HTTPメソッド許可
+    allow_headers=["*"],            # 全ヘッダー許可
 )
 
 # OpenAI
