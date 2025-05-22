@@ -34,6 +34,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("uvicorn.error")
 
 # CORS 設定: フロントエンドからのリクエストを許可
+from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],        # 全オリジンを許可
