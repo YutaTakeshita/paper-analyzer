@@ -1,4 +1,4 @@
-# backend/app/main.py
+# backend/main.py
 import os
 import time
 import uuid
@@ -12,7 +12,6 @@ import openai
 import boto3
 import urllib3
 from fastapi import FastAPI, HTTPException, File, UploadFile, Response
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
@@ -33,15 +32,13 @@ app = FastAPI(title="Paper Analyzer API")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("uvicorn.error")
 
-# CORS 設定: フロントエンドからのリクエストを許可
-from fastapi.middleware.cors import CORSMiddleware
-
+# CORS middleware setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # 全オリジンを許可
-    allow_credentials=True,     # Cookie/認証情報を許可
-    allow_methods=["*"],        # 全HTTPメソッドを許可（OPTIONS含む）
-    allow_headers=["*"],        # 全ヘッダーを許可
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # OpenAI
