@@ -31,12 +31,24 @@ fi
 DEST_URI="${PDF_URI%.pdf}.xml"
 echo "Uploading to ${DEST_URI} ..."
 gsutil cp "${OUT_XML}" "${DEST_URI}"
-# Update Firestore status to 'done'
+
+# Firestoreステータスをdoneに更新（失敗時は即終了・エラー内容も表示）
 python3 - <<EOF
 from google.cloud import firestore
-# Extract job ID from DEST_URI (gs://.../<jobid>.xml)
+import sys
 job_id="${DEST_URI##*/}"
 job_id="${job_id%.xml}"
-firestore.Client().collection("jobs").document(job_id).update({"status":"done"})
+try:
+    firestore.Client().collection("jobs").document(job_id).update({"status":"done"})
+    print("Firestore update: success")
+except Exception as e:
+    print("Firestore update: failed", e, file=sys.stderr)
+    sys.exit(1)
 EOF
+
+if [ $? -ne 0 ]; then
+  echo "❌ Firestore status update failed"
+  exit 1
+fi
+
 echo "✅ Finished successfully."

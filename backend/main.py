@@ -290,16 +290,21 @@ async def cermine_upload(file: UploadFile = File(...)):
     })
 
     job_name = f"projects/{PROJECT_ID}/locations/{LOCATION}/jobs/{JOB_NAME}"
-
-    # arguments を渡す場合、コンテナ側がそれを受け取れることを確認してください
-    arguments = [f"gs://cermine_paket/{job_id}.pdf"]
+    arguments = [f"gs://cermine_paket/{job_id}.pdf"] #
 
     try:
         run_client.projects().locations().jobs().run(
             name=job_name,
             body={
-                "taskOverrides": {
-                    "args": arguments
+                "overrides": {  # "taskOverrides" から "overrides" に変更
+                    "containerOverrides": [
+                        {
+                            "args": arguments
+                            # コンテナ名がデフォルトでない場合や、複数のコンテナがある場合は、
+                            # ここで "name": "your-container-name" のように指定が必要な場合があります。
+                            # entrypoint.sh を見る限り、コンテナは一つで、引数はそのまま渡される想定のようです。
+                        }
+                    ]
                 }
             }
         ).execute()
