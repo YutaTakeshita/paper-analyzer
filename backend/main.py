@@ -285,7 +285,10 @@ async def cermine_upload(file: UploadFile = File(...)):
     })
     job_name = f"projects/{PROJECT_ID}/locations/{LOCATION}/jobs/{JOB_NAME}"
     run_client.projects().locations().jobs().run(
-        name=job_name
+        name=job_name,
+        body={
+            "arguments": [f"gs://cermine_paket/{job_id}.pdf"]
+        }
     ).execute()
     return {"jobId": job_id}
 
