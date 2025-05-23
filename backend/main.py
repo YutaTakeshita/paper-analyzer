@@ -273,23 +273,40 @@ async def tts(body: dict):
 @app.post("/api/cermine/upload")
 async def cermine_upload(file: UploadFile = File(...)):
     job_id = uuid.uuid4().hex
+    if not job_id or job_id.strip() == "" or "/" in job_id:
+        raise HTTPException(400, "jobIdが不正です")
+
     tmp_pdf = f"/tmp/{job_id}.pdf"
     with open(tmp_pdf, "wb") as f:
         f.write(await file.read())
+
     bucket = storage_client.bucket("cermine_paket")
     blob = bucket.blob(f"{job_id}.pdf")
     blob.upload_from_filename(tmp_pdf)
+
     firestore_client.collection("jobs").document(job_id).set({
         "status": "pending",
         "pdfPath": f"gs://cermine_paket/{job_id}.pdf"
     })
+
     job_name = f"projects/{PROJECT_ID}/locations/{LOCATION}/jobs/{JOB_NAME}"
-    run_client.projects().locations().jobs().run(
-        name=job_name,
-        body={
-            "arguments": [f"gs://cermine_paket/{job_id}.pdf"]
-        }
-    ).execute()
+
+    # arguments を渡す場合、コンテナ側がそれを受け取れることを確認してください
+    arguments = [f"gs://cermine_paket/{job_id}.pdf"]
+
+    try:
+        run_client.projects().locations().jobs().run(
+            name=job_name,
+            body={
+                "taskOverrides": {
+                    "args": arguments
+                }
+            }
+        ).execute()
+    except Exception as e:
+        logger.error(f"Cloud Run Job起動に失敗: {e}")
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
     return {"jobId": job_id}
 
 @app.get("/api/cermine/status")
