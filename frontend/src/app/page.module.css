@@ -14,12 +14,12 @@
 
   display: grid;
   grid-template-rows: auto 1fr auto; /* Header/Footer auto, main content takes remaining space */
-  align-items: center; /* Vertically center content in grid cells */
-  justify-items: center; /* Horizontally center content in grid cells */
+  /* align-items: center; REMOVED - let main control its alignment */
+  justify-items: center; /* Horizontally center grid items like .main, .header, .footer */
   min-height: 100svh;
-  padding: 32px; /* Reduced padding for smaller screens, overridden by media query for larger */
-  gap: 32px; /* Reduced gap */
-  font-family: var(--font-geist-sans); /* Ensure this variable is defined, or use 'Noto Sans JP' */
+  padding: 20px; /* Base padding, adjusted by media queries */
+  gap: 24px; /* Base gap, adjusted by media queries */
+  font-family: 'Noto Sans JP', var(--font-geist-sans), sans-serif; /* Fallback for geist-sans */
 }
 
 .main {
@@ -28,51 +28,53 @@
   flex-direction: column;
   gap: 32px;
   width: 100%;
-  max-width: 900px; /* Increased max-width slightly */
-  align-items: center; /* Center content within main */
+  max-width: 1100px; /* Increased max-width for PC */
+  padding: 0 16px; /* Add horizontal padding to main content area */
+  /* align-items: center; REMOVED - let children like .results or .form align themselves */
 }
 
-.main h1 {
+.main h1 { /* This refers to H1 directly under .main, like the page title */
   text-align: center;
-  font-size: 2.5rem;
+  font-size: 2.25rem; /* Adjusted */
   font-weight: 700;
-  color: var(--text-heading); /* Use variable from globals.css */
+  color: var(--text-heading);
   margin: 24px 0;
 }
 
-.description {
+.description { /* This is for the page description under the main H1 */
   text-align: center;
-  font-size: 1.125rem;
-  color: var(--text-default); /* Use variable */
-  margin-bottom: 32px;
-  max-width: 700px; /* Limit width for readability */
-}
-
-/* -------------------------------------------------- */
-/* Header (App Title & Description) */
-/* -------------------------------------------------- */
-.header {
-  width: 100%;
-  max-width: 900px; /* Match main content width */
-  background-color: var(--header-bg) !important; /* Ensure it's applied, or var(--blue-light) */
-  backdrop-filter: blur(5px); /* Reduced blur */
-  padding: 1.5rem; /* Adjusted padding */
-  border-radius: 12px;
-  margin-bottom: 1rem; /* Consistent margin */
-  text-align: center;
-  box-shadow: var(--shadow-color) 0px 4px 12px; /* Use variable */
-}
-
-.header h1 {
-  margin: 0 0 0.5rem 0; /* Adjusted margin */
-  font-size: 2.25rem; /* Slightly adjusted */
-  color: var(--header-title, var(--text-heading)) !important; /* Fallback to text-heading */
-}
-
-.header p {
-  margin-top: 0.5rem;
   font-size: 1.1rem; /* Adjusted */
-  color: var(--header-text, var(--text-default)) !important; /* Fallback */
+  color: var(--text-default);
+  margin-bottom: 32px;
+  max-width: 700px;
+  line-height: 1.6;
+}
+
+/* -------------------------------------------------- */
+/* Header (App Title & Sub-Description inside a card-like element) */
+/* -------------------------------------------------- */
+.header { /* This is the card-like header at the top */
+  width: 100%;
+  /* max-width: 900px; /* Let .main control max-width */
+  background-color: var(--header-bg, var(--blue-light)) !important; /* Fallback */
+  backdrop-filter: blur(5px);
+  padding: 1.5rem;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: var(--shadow-color) 0px 4px 12px;
+  margin-bottom: 1rem;
+}
+
+.header h1 { /* This is the H1 inside the .header card */
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem; /* Adjusted for card header */
+  color: var(--header-title, var(--text-heading)) !important;
+}
+
+.header p { /* This is the P inside the .header card */
+  margin-top: 0.5rem;
+  font-size: 1rem; /* Adjusted */
+  color: var(--header-text, var(--text-default)) !important;
   line-height: 1.6;
 }
 
@@ -85,23 +87,22 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  max-width: 600px;
-  margin: 0 auto 32px auto; /* Add bottom margin */
-  padding: 20px;
+  max-width: 600px; /* Form can be narrower */
+  margin: 0 auto 32px auto;
+  padding: 24px; /* Increased padding */
   background-color: var(--background);
   border-radius: 8px;
   box-shadow: var(--shadow-color) 0px 2px 8px;
 }
 
 .form input[type="file"] {
-  padding: 10px 14px; /* Increased padding */
-  border: 1px solid var(--gray-border); /* Use variable */
-  border-radius: 6px; /* Consistent radius */
+  padding: 10px 14px;
+  border: 1px solid var(--gray-border);
+  border-radius: 6px;
   background: transparent;
   font-size: 1rem;
   color: var(--text-default);
 }
-/* Style for file input button (browser dependent) */
 .form input[type="file"]::file-selector-button {
   padding: 8px 12px;
   margin-right: 12px;
@@ -116,7 +117,6 @@
   background-color: var(--blue-primary-dark);
 }
 
-
 .form button {
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
@@ -129,8 +129,7 @@
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.1s ease;
 }
-
-.form button:hover:enabled { /* Ensure hover only on enabled */
+.form button:hover:enabled {
   background-color: var(--blue-primary-dark);
   transform: translateY(-1px);
 }
@@ -147,7 +146,7 @@
 }
 
 .fileName {
-  font-size: 0.9rem; /* Slightly smaller */
+  font-size: 0.9rem;
   color: var(--text-default);
   text-align: center;
   margin-top: 8px;
@@ -159,8 +158,9 @@
 /* -------------------------------------------------- */
 .statusMessage {
   text-align: center;
-  padding: 10px;
-  margin-bottom: 16px;
+  padding: 10px 15px;
+  margin: 16px auto; /* Centered with auto margins */
+  max-width: 600px; /* Consistent with form width */
   background-color: var(--blue-light);
   color: var(--blue-primary-dark);
   border-left: 4px solid var(--blue-primary);
@@ -168,11 +168,11 @@
 }
 
 .error {
-  color: #e53e3e; /* More specific error red */
+  color: #e53e3e;
   text-align: center;
   background-color: #fff5f5;
   border: 1px solid #fc8181;
-  padding: 10px;
+  padding: 10px 15px;
   border-radius: 6px;
   margin: 16px auto;
   max-width: 600px;
@@ -182,11 +182,11 @@
 /* Results Area (Container for TOC, Sections, etc.) */
 /* -------------------------------------------------- */
 .results {
-  display: flex; /* Changed to flex for better control over children */
+  display: flex;
   flex-direction: column;
   gap: 24px;
   width: 100%;
-  max-width: 800px; /* Kept from original */
+  /* max-width: 800px; /* Let .main control max-width */
   margin: 0 auto;
 }
 
@@ -194,60 +194,54 @@
 .section {
   display: flex;
   flex-direction: column;
-  background-color: var(--background) !important; /* Use CSS var from globals */
-  padding: 20px; /* Consistent padding */
-  border-radius: 8px;
-  box-shadow: var(--shadow-color) 0px 4px 12px;
+  background-color: var(--background) !important;
+  padding: 24px; /* Increased padding */
+  border-radius: 12px; /* Softer radius */
+  box-shadow: var(--shadow-color) 0px 4px 16px; /* Slightly more pronounced shadow */
   border: 1px solid var(--gray-border);
 }
+.section:last-child { /* Extra space below the very last card on the page */
+  margin-bottom: 40px; /* From original */
+}
+
 
 .section h2 {
-  margin-top: 0; /* Remove default margin */
-  margin-bottom: 16px; /* Increased bottom margin */
-  font-size: 1.5em; /* Slightly larger */
-  color: var(--text-heading) !important; /* Use CSS var */
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 1.5em;
+  color: var(--text-heading) !important;
   border-bottom: 1px solid var(--gray-border);
-  padding-bottom: 8px;
+  padding-bottom: 10px; /* Increased padding */
 }
-
-.section h3 { /* For subheadings within sections, e.g., "Figures in this section" */
-  margin-top: 16px;
-  margin-bottom: 8px;
-  font-size: 1.2em;
+.section h3 {
+  margin-top: 20px; /* Increased top margin */
+  margin-bottom: 10px;
+  font-size: 1.25em; /* Adjusted */
   color: var(--text-heading);
 }
-.section h4 { /* For sub-subheadings, e.g., "Table X" */
-  margin-top: 12px;
-  margin-bottom: 6px;
+.section h4 {
+  margin-top: 16px;
+  margin-bottom: 8px;
   font-size: 1.1em;
   color: var(--text-heading);
 }
 
-
-.section p {
-  line-height: 1.7; /* Adjusted */
-  white-space: pre-wrap;
-  word-break: break-word;
-  /* hyphens: auto; */ /* Can be performance intensive and layout-breaking sometimes */
-  max-width: 100%;
-  color: var(--text-default) !important; /* Use CSS var */
+/* Styles for text content within sections */
+.section p, .sectionText div, .sectionText span, .sectionText { /* Apply to common text containers */
+  line-height: 1.75; /* Increased for readability */
+  white-space: normal;  /* Changed from pre-wrap to allow normal flow and wrapping */
+  overflow-wrap: break-word; /* Helps break long words if they would overflow */
+  word-break: normal; /* Avoids breaking mid-word unnecessarily for most languages */
+  color: var(--text-default) !important;
   text-align: left;
-  margin-bottom: 1rem; /* Add consistent bottom margin */
+  margin-bottom: 1em; /* Consistent paragraph spacing */
 }
-.section p:last-child {
+.section p:last-child, .sectionText div:last-child { /* Remove margin from last paragraph/div */
   margin-bottom: 0;
 }
-
-
-.sectionText { /* Class for div containing dangerouslySetInnerHTML */
-  line-height: 1.7;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: var(--text-default);
-  text-align: left;
-}
-.sectionText p { /* Paragraphs within sectionText */
-   margin-bottom: 1em;
+/* For text that IS pre-formatted, use a specific class if needed, or handle line breaks in data */
+.preformattedText {
+  white-space: pre-wrap; /* Only use this if explicit pre-formatting is needed */
 }
 
 
@@ -256,46 +250,42 @@
 /* -------------------------------------------------- */
 .toc {
   width: 100%;
-  max-width: 800px;
-  margin: 0 auto 32px;
-  padding: 16px;
-  background-color: var(--blue-light); /* Use variable from globals */
+  /* max-width: 800px; /* Let .main or .results control this */
+  margin: 0 auto 32px auto; /* Center and add bottom margin */
+  padding: 20px; /* Increased padding */
+  background-color: var(--blue-light);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   border-radius: 8px;
   border: 1px solid var(--gray-border);
+  border-left: 4px solid var(--blue-primary); /* From original for emphasis */
 }
 
 .toc summary {
-  color: var(--text-heading); /* Use variable */
-  font-size: 1.125rem;
+  color: var(--text-heading);
+  font-size: 1.2em; /* Slightly larger */
   font-weight: 600;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem; /* Increased margin */
   cursor: pointer;
   outline: none;
   user-select: none;
 }
-
 .toc ul {
   margin: 0;
-  padding-left: 20px; /* Indent list items */
-  list-style-type: disc; /* Use disc for TOC */
+  padding-left: 20px;
+  list-style-type: disc;
 }
-
 .toc li {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.6rem; /* Adjusted */
 }
-
 .toc li::marker {
-  color: var(--blue-primary) !important; /* Consistent marker color */
+  color: var(--blue-primary) !important;
 }
-
 .toc a {
-  color:  var(--blue-primary-dark) !important; /* Use variable */
+  color:  var(--blue-primary-dark) !important;
   text-decoration: none;
   transition: color 0.2s ease;
   font-weight: 500;
 }
-
 .toc a:hover {
   color: var(--blue-primary) !important;
   text-decoration: underline;
@@ -304,28 +294,32 @@
 /* -------------------------------------------------- */
 /* Meta Information Section */
 /* -------------------------------------------------- */
+.metaSection { /* This class might be added to a .section element */
+  /* .section styles already apply, add specific overrides if needed */
+}
 .metaSection p {
-  margin-bottom: 0.5rem; /* Smaller margin for meta items */
-  line-height: 1.5;
+  margin-bottom: 0.6rem; /* Adjusted */
+  line-height: 1.6;
 }
 .metaSection strong {
   color: var(--text-heading);
+  margin-right: 0.5em;
 }
 
 /* -------------------------------------------------- */
-/* Sections (Content) */
+/* Sections (Content Text and Actions) */
 /* -------------------------------------------------- */
 .readMoreButton {
   background: none;
   border: 1px solid var(--blue-primary);
   color: var(--blue-primary);
-  padding: 6px 12px; /* Adjusted padding */
+  padding: 6px 12px;
   font-weight: 600;
-  margin-top: 1rem; /* Consistent margin */
+  margin-top: 1rem;
   cursor: pointer;
   transition: color 0.2s ease, background-color 0.2s ease;
   border-radius: 4px;
-  align-self: flex-start; /* Align to the left */
+  align-self: flex-start;
 }
 .readMoreButton:hover {
   color: white;
@@ -334,8 +328,14 @@
   text-decoration: none;
 }
 
-/* Citation styling (global.css has sup.citation) */
-.section sup.citation a { /* Make citation links clearer */
+.section sup.citation { /* Combined with global for specificity if needed */
+  font-size: 0.75em;
+  vertical-align: super;
+  line-height: 1;
+  margin-left: 0.2em;
+  opacity: 1;
+}
+.section sup.citation a {
   color: var(--blue-primary) !important;
   text-decoration: none;
   font-weight: bold;
@@ -347,10 +347,11 @@
 /* For TEI-derived figures within sections (usually just captions) */
 .figureItemTei {
   margin: 1rem 0;
-  padding: 0.5rem;
+  padding: 0.75rem; /* Increased padding */
   background-color: var(--gray-alpha-100);
   border-left: 3px solid var(--gray-border);
   font-size: 0.9em;
+  border-radius: 4px;
 }
 .figureItemTei figcaption {
   color: var(--text-default);
@@ -359,42 +360,46 @@
 /* -------------------------------------------------- */
 /* Extracted Media (Figures & Tables from PDF) */
 /* -------------------------------------------------- */
-.extractedMediaSection h2 { /* Keep this distinct */
-   /* Same as .section h2 or can be different */
+.extractedMediaSection { /* This class might be added to a .section element */
+  /* .section styles already apply */
 }
 
 .figuresGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Responsive grid */
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Slightly larger minmax */
+  gap: 20px; /* Increased gap */
   margin-top: 1rem;
 }
 
 .figureItem {
   border: 1px solid var(--gray-border);
   border-radius: 6px;
-  padding: 8px;
+  padding: 12px; /* Increased padding */
   text-align: center;
-  background-color: var(--gray-alpha-100);
+  background-color: var(--gray-alpha-50, var(--background)); /* Use a lighter gray or background */
 }
 .figureItem img {
   max-width: 100%;
   height: auto;
   border-radius: 4px;
   margin-bottom: 8px;
+  border: 1px solid var(--gray-alpha-200); /* Slight border for images */
 }
 .figureItem figcaption {
-  font-size: 0.85rem;
+  font-size: 0.9rem; /* Adjusted */
   color: var(--text-default);
+  margin-top: 4px;
 }
 
 .tableContainer {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+  margin-top: 1.5rem; /* Increased margin */
+  margin-bottom: 1.5rem;
 }
 .tableScrollWrapper {
-  overflow-x: auto; /* Enable horizontal scroll for wide tables */
-  padding-bottom: 8px; /* Space for scrollbar */
+  overflow-x: auto;
+  padding-bottom: 8px;
+  border: 1px solid var(--gray-border); /* Add border around scroll wrapper */
+  border-radius: 6px;
 }
 .tableScrollWrapper table {
   width: 100%;
@@ -404,105 +409,110 @@
 .tableScrollWrapper th,
 .tableScrollWrapper td {
   border: 1px solid var(--gray-border);
-  padding: 6px 8px;
+  padding: 8px 10px; /* Increased padding */
   text-align: left;
   vertical-align: top;
 }
 .tableScrollWrapper th {
   background-color: var(--gray-alpha-100);
-  font-weight: 600;
+  font-weight: bold; /* Bolder */
   color: var(--text-heading);
 }
 
 /* -------------------------------------------------- */
 /* References Section */
 /* -------------------------------------------------- */
-.referencesSection h2 {
-  /* Same as .section h2 or can be different */
+.referencesSection { /* This class might be added to a .section element */
+  /* .section styles already apply */
 }
 .referencesList {
-  list-style: none; /* Custom markers will be used */
+  list-style: none;
   counter-reset: ref;
-  padding-left: 0; /* Remove default padding */
+  padding-left: 0;
   margin-top: 1rem;
 }
 .referencesList li {
   counter-increment: ref;
   display: flex;
-  align-items: baseline; /* Align marker and text nicely */
-  margin-bottom: 0.75em; /* Increased spacing */
-  line-height: 1.6;
+  align-items: flex-start; /* Changed to flex-start for better long text alignment */
+  margin-bottom: 0.85em; /* Adjusted */
+  line-height: 1.65; /* Adjusted */
 }
 .referencesList li::before {
-  content: "[" counter(ref) "]"; /* Changed marker style */
+  content: "[" counter(ref) "]";
   display: inline-block;
-  min-width: 2.5ch; /* Adjusted for potential 3-digit numbers + brackets */
-  margin-right: 0.75em; /* Adjusted spacing */
+  min-width: 3ch; /* Adjusted for up to 3-digit numbers + brackets */
+  margin-right: 1em; /* Adjusted */
   text-align: right;
   flex-shrink: 0;
-  color: var(--blue-primary); /* Consistent color */
+  color: var(--blue-primary);
   font-weight: bold;
+  padding-top: 0.05em; /* Fine-tune vertical alignment with text */
 }
-.referencesList li a { /* Links within reference items */
+.referencesList li a {
   color: var(--blue-primary-dark) !important;
   text-decoration: underline;
 }
 .referencesList li a:hover {
   color: var(--blue-primary) !important;
 }
-
-/* For scrolling to reference ID (from citation click) */
 .referencesList li[id^="ref"] {
-  scroll-margin-top: 4rem; /* Adjust based on fixed header height, if any */
+  scroll-margin-top: 4rem;
 }
 
 /* -------------------------------------------------- */
 /* Action Buttons (Summary, TTS) & Related Elements */
 /* -------------------------------------------------- */
-.actionsContainer { /* Container for summary and TTS buttons */
-  margin-top: 1rem;
+.actionsContainer {
+  margin-top: 1.5rem; /* Increased margin */
   display: flex;
-  flex-direction: column; /* Stack buttons vertically */
-  gap: 12px; /* Space between button groups */
-  align-items: flex-start; /* Align buttons to the left */
+  flex-direction: column;
+  gap: 16px; /* Increased gap */
+  align-items: flex-start;
 }
 
 .summaryButton,
 .ttsButton {
-  margin-top: 0; /* Reset margin-top as .actionsContainer handles spacing */
-  padding: 0.6rem 1rem; /* Adjusted padding */
-  font-size: 0.9rem; /* Adjusted font size */
+  margin-top: 0;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem; /* Slightly larger */
   font-weight: 600;
   color: #ffffff;
   background-color: var(--blue-primary);
   border: none;
   border-radius: 6px;
-  box-shadow: 0 2px 4px var(--shadow-color); /* Softer shadow */
+  box-shadow: 0 2px 4px var(--shadow-color);
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
+  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.1s ease;
 }
 .summaryButton:hover:enabled,
 .ttsButton:hover:enabled {
   background-color: var(--blue-primary-dark);
-  transform: translateY(-1px);
+  transform: translateY(-2px); /* More hover effect */
+  box-shadow: 0 4px 8px rgba(var(--gray-rgb), 0.15);
+}
+.summaryButton:active:enabled,
+.ttsButton:active:enabled {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px var(--shadow-color);
 }
 .summaryButton:disabled,
 .ttsButton:disabled {
-  opacity: 0.6;
+  opacity: 0.5; /* Slightly more opaque disabled */
   cursor: default;
-  background-color: var(--gray-light); /* More distinct disabled state */
+  background-color: var(--gray-light);
   color: #999;
   transform: none;
   box-shadow: none;
 }
 
 .summaryText {
-  margin-top: 8px;
-  padding: 12px;
-  background-color: var(--blue-light); /* Use variable */
-  border-left: 4px solid var(--blue-primary); /* Use variable */
-  color: var(--text-default); /* Use variable */
-  line-height: 1.6;
+  margin-top: 10px; /* Increased */
+  padding: 14px; /* Increased */
+  background-color: var(--blue-light);
+  border-left: 4px solid var(--blue-primary);
+  color: var(--text-default);
+  line-height: 1.65; /* Adjusted */
   white-space: pre-wrap;
   word-break: break-word;
   overflow: auto;
@@ -511,32 +521,29 @@
 }
 
 .ttsContainer {
-  margin-top: 0; /* Reset as .actionsContainer handles spacing */
+  margin-top: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  width: 100%; /* Allow audio player to take full width */
+  width: 100%;
 }
 .ttsContainer audio {
-  margin-top: 8px;
+  margin-top: 10px; /* Increased */
   width: 100%;
-  height: 40px; /* Consistent height for audio player */
+  height: 40px;
 }
-.ttsContainer audio:disabled { /* This won't work directly, but for styling if needed */
-  opacity: 0.6;
-}
-
 
 /* Empty section message styling */
 .empty {
   font-size: 1rem;
-  color: #888888;
+  color: #777; /* Darker gray */
   font-style: italic;
-  margin-top: 8px;
+  margin-top: 16px; /* Increased */
   text-align: center;
-  padding: 20px;
+  padding: 24px; /* Increased */
   background-color: var(--gray-alpha-100);
   border-radius: 6px;
+  border: 1px dashed var(--gray-border); /* Dashed border for emphasis */
 }
 
 /* -------------------------------------------------- */
@@ -546,362 +553,349 @@
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
-  width: 48px;
-  height: 48px;
+  width: 52px; /* Slightly larger */
+  height: 52px; /* Slightly larger */
   background-color: var(--blue-primary);
   color: #ffffff;
   border: none;
   border-radius: 50%;
-  box-shadow: 0 2px 6px var(--shadow-color);
+  box-shadow: 0 4px 12px var(--shadow-color); /* Stronger shadow */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
+  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.1s ease;
   z-index: 1000;
-  font-size: 1.5rem; /* Make arrow bigger */
+  font-size: 1.6rem; /* Adjusted arrow size */
 }
 .backButton:hover {
   background-color: var(--blue-primary-dark);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px var(--shadow-color);
 }
 .backButton:active {
   transform: translateY(0);
+  box-shadow: 0 2px 6px var(--shadow-color);
 }
 
 /* -------------------------------------------------- */
-/* General Helper Styles (from original .main context) */
+/* General Helper Styles (Scoped more carefully) */
 /* -------------------------------------------------- */
-/* These were originally under .main but might be applicable more broadly or need to be specific to sections */
-.main ol { /* This might be too general, consider .referencesList or specific ol */
-  font-family: var(--font-geist-mono); /* Should geist-mono be defined in globals? */
-  padding-left: 0;
-  margin: 0;
-  font-size: 14px;
-  line-height: 24px;
-  letter-spacing: -0.01em;
-  list-style-position: inside;
-}
+/* Apply to specific lists if needed, e.g., .referencesList already styled */
+/* .someSpecificList ol { ... } */
+/* .someSpecificList li:not(:last-of-type) { ... } */
 
-.main li:not(:last-of-type) { /* Also potentially too general */
-  margin-bottom: 8px;
-}
-
-.main code { /* Also potentially too general */
-  font-family: inherit;
+/* Apply to specific code blocks if needed */
+.codeBlock { /* Example, use this class on <code> or <pre> elements */
+  font-family: var(--font-geist-mono, monospace); /* Add monospace fallback */
   background: var(--gray-alpha-100);
-  padding: 2px 4px;
+  padding: 4px 8px; /* Increased padding */
   border-radius: 4px;
   font-weight: 600;
-  color: var(--blue-primary-dark); /* Make code stand out a bit */
+  color: var(--blue-primary-dark);
+  display: inline-block; /* Or block if it's a larger code block */
+  white-space: pre-wrap; /* For code blocks */
+  word-break: break-all; /* For long unbreakable strings in code */
 }
 
 
 /* -------------------------------------------------- */
-/* Footer & CTAs (Call to Action buttons, if any from original) */
+/* Footer & CTAs */
 /* -------------------------------------------------- */
-/* .ctas and .footer styles from original are kept if still used */
 .ctas {
   display: flex;
   gap: 16px;
-  margin-top: 2rem; /* Add some space if used at the end of sections */
+  margin-top: 2rem;
+  justify-content: center; /* Center CTAs if they are on their own */
 }
-
 .ctas a {
   appearance: none;
-  border-radius: 128px;
+  border-radius: 30px; /* Pill shape */
   height: 48px;
-  padding: 0 20px;
+  padding: 0 24px; /* More padding */
   border: 1px solid transparent;
   transition:
     background 0.2s,
     color 0.2s,
     border-color 0.2s;
   cursor: pointer;
-  display: flex;
+  display: inline-flex; /* Changed to inline-flex */
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  line-height: 20px;
+  font-size: 1rem; /* Adjusted */
+  line-height: 1.25; /* Adjusted */
   font-weight: 500;
-  text-decoration: none; /* Ensure links are not underlined by default */
+  text-decoration: none;
 }
-
-a.primary { /* This was in the original, ensure it's still used or adapt */
-  background: var(--foreground);
-  color: var(--background);
+a.primary {
+  background: var(--blue-primary); /* Changed to blue */
+  color: white;
   gap: 8px;
 }
-
-a.secondary { /* This was in the original */
-  border-color: var(--gray-alpha-200);
-  min-width: 158px;
-  color: var(--text-default);
+a.primary:hover { /* Added hover for primary */
+  background: var(--blue-primary-dark);
 }
+
+a.secondary {
+  border-color: var(--blue-primary); /* Changed to blue border */
+  color: var(--blue-primary);
+  /* min-width: 158px; Removed if not necessary */
+}
+a.secondary:hover { /* Added hover for secondary */
+  background: var(--blue-light);
+  border-color: var(--blue-primary);
+}
+
 
 .footer {
   grid-row-start: 3;
   display: flex;
   gap: 24px;
-  padding-top: 32px; /* Add padding above footer */
+  padding: 32px 0; /* Only top/bottom padding */
   border-top: 1px solid var(--gray-border);
   width: 100%;
-  max-width: 900px; /* Match main content width */
-  justify-content: center; /* Center footer content */
+  /* max-width: 900px; /* Let .main control this */
+  justify-content: center;
+  align-items: center;
+  margin-top: 32px; /* Space above footer */
 }
-
 .footer a {
   display: flex;
   align-items: center;
   gap: 8px;
   color: var(--text-default);
   text-decoration: none;
+  font-size: 0.9rem;
 }
-
+.footer a:hover {
+  text-decoration: underline;
+  color: var(--blue-primary);
+}
 .footer img {
   flex-shrink: 0;
+  height: 20px; /* Example size */
+  width: auto;
 }
 
 /* -------------------------------------------------- */
-/* Dark Mode Overrides (Consolidated) */
+/* Dark Mode Overrides */
 /* -------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
   .page {
-    background-color: #121212; /* Darker background for page */
+    background-color: #181818; /* Slightly lighter dark background */
     --gray-rgb: 255, 255, 255;
-    --gray-alpha-200: rgba(var(--gray-rgb), 0.145);
-    --gray-alpha-100: rgba(var(--gray-rgb), 0.06);
-    --button-primary-hover: #ccc;
-    --button-secondary-hover: #333; /* Darker secondary hover */
+    --gray-alpha-200: rgba(var(--gray-rgb), 0.2); /* Adjusted alpha */
+    --gray-alpha-100: rgba(var(--gray-rgb), 0.1); /* Adjusted alpha */
+    --gray-alpha-50: rgba(var(--gray-rgb), 0.05);
+    --button-primary-hover: #ddd; /* Lighter for dark mode */
+    --button-secondary-hover: #444; /* Darker gray for secondary */
   }
 
-  .main h1 {
-    color: var(--foreground); /* From globals.css dark mode */
-  }
-  .description {
-    color: #bbb; /* Lighter gray for description */
-  }
+  .main h1 { color: var(--foreground); }
+  .description { color: #ccc; }
 
   .header {
-    background-color: rgba(var(--gray-rgb), 0.08) !important; /* Use variables */
+    background-color: rgba(var(--gray-rgb), 0.08) !important;
+    box-shadow: rgba(0,0,0,0.3) 0px 4px 12px; /* Darker shadow for dark mode */
   }
-  .header h1 {
-    color: var(--foreground) !important;
-  }
-  .header p {
-    color: #ddd !important;
-  }
+  .header h1 { color: var(--foreground) !important; }
+  .header p { color: #ddd !important; }
 
   .form {
-    background-color: #1e1e1e; /* Darker form background */
-    box-shadow: rgba(var(--gray-rgb), 0.05) 0px 2px 8px;
+    background-color: #2a2a2a; /* Darker form */
+    border-color: var(--gray-alpha-200);
+    box-shadow: rgba(0,0,0,0.2) 0px 2px 8px;
   }
   .form input[type="file"] {
     border-color: var(--gray-alpha-200);
     color: var(--foreground);
   }
    .form input[type="file"]::file-selector-button {
-    background-color: var(--blue-primary-dark); /* Darker button */
+    background-color: var(--blue-primary-dark);
     color: #eee;
   }
   .form input[type="file"]::file-selector-button:hover {
-    background-color: #0b3a6a; /* Even darker */
+    background-color: #0a3158; /* Even darker */
+  }
+  .form button:disabled {
+    background-color: #333;
+    color: #777;
   }
 
+  .statusMessage {
+    background-color: rgba(var(--blue-light), 0.1);
+    color: var(--blue-light);
+    border-left-color: var(--blue-light);
+  }
+  .error {
+    background-color: rgba(255, 200, 200, 0.1);
+    color: #ffacac;
+    border-color: #f56565;
+  }
 
   .section {
-    background-color: #1e1e1e !important; /* Darker section cards */
+    background-color: #2a2a2a !important; /* Darker section */
     border-color: var(--gray-alpha-200);
-    box-shadow: rgba(var(--gray-rgb), 0.05) 0px 4px 12px;
+    box-shadow: rgba(0,0,0,0.25) 0px 4px 16px;
   }
   .section h2 {
     color: var(--foreground) !important;
     border-bottom-color: var(--gray-alpha-200);
   }
-   .section h3, .section h4 {
-    color: var(--foreground);
-  }
-  .section p, .sectionText {
-    color: #ccc !important; /* Lighter text on dark background */
-  }
-  .section sup.citation a {
-    color: var(--blue-light) !important;
-  }
+   .section h3, .section h4 { color: var(--foreground); }
+  .section p, .sectionText, .sectionText div, .sectionText span { color: #ccc !important; }
+  .section sup.citation a { color: var(--blue-light) !important; }
 
   .readMoreButton {
     color: var(--blue-light);
     border-color: var(--blue-light);
   }
   .readMoreButton:hover {
-    color: var(--background);
+    color: #121212; /* Dark text on light blue bg */
     background-color: var(--blue-light);
   }
   
   .figureItemTei {
-    background-color: var(--gray-alpha-200);
-    border-left-color: var(--gray-alpha-100);
+    background-color: var(--gray-alpha-100); /* Darker */
+    border-left-color: var(--gray-alpha-200);
   }
-  .figureItemTei figcaption {
-    color: #bbb;
-  }
+  .figureItemTei figcaption { color: #bbb; }
 
   .figureItem {
     border-color: var(--gray-alpha-200);
-    background-color: var(--gray-alpha-200);
+    background-color: var(--gray-alpha-100);
   }
-  .figureItem figcaption {
-    color: #bbb;
-  }
+  .figureItem img { border-color: var(--gray-alpha-100); }
+  .figureItem figcaption { color: #bbb; }
+
+  .tableScrollWrapper { border-color: var(--gray-alpha-200); }
   .tableScrollWrapper th {
     background-color: var(--gray-alpha-200);
     color: var(--foreground);
   }
-   .tableScrollWrapper th, .tableScrollWrapper td {
-    border-color: var(--gray-alpha-100);
-   }
-
+   .tableScrollWrapper th, .tableScrollWrapper td { border-color: var(--gray-alpha-100); }
 
   .summaryButton, .ttsButton {
-    background-color: var(--blue-primary-dark); /* Darker buttons in dark mode */
+    background-color: var(--blue-primary-dark);
   }
   .summaryButton:hover:enabled, .ttsButton:hover:enabled {
-    background-color: #0b3a6a; /* Even darker hover */
+    background-color: #0a3158;
   }
   .summaryButton:disabled, .ttsButton:disabled {
-    background-color: #2a2a2a;
+    background-color: #333;
     color: #777;
   }
 
-
   .summaryText {
-    background-color: #2a2a2a; /* Darker summary background */
+    background-color: #333; /* Darker summary */
     border-left-color: var(--blue-primary);
     color: #ddd;
   }
 
   .empty {
-    color: #777;
-    background-color: var(--gray-alpha-200);
+    color: #888; /* Adjusted */
+    background-color: var(--gray-alpha-100);
+    border-color: var(--gray-alpha-200);
   }
 
   .toc {
-    background-color: #1e1e1e !important;
+    background-color: #2a2a2a !important;
     border-left-color: var(--blue-primary-dark);
     border-color: var(--gray-alpha-200);
   }
-  .toc summary {
-    color: var(--foreground);
-  }
-  .toc li::marker {
-    color: var(--blue-light) !important;
-  }
-  .toc a {
-    color: var(--blue-light) !important;
-  }
-  .toc a:hover {
-    color: #add8e6 !important; /* Lighter blue for hover */
-  }
+  .toc summary { color: var(--foreground); }
+  .toc li::marker { color: var(--blue-light) !important; }
+  .toc a { color: var(--blue-light) !important; }
+  .toc a:hover { color: #cceeff !important; } /* Lighter blue for hover */
 
-  .referencesList li::before {
-    color: var(--blue-light);
-  }
-  .referencesList li a {
-    color: var(--blue-light) !important;
-  }
-   .referencesList li a:hover {
-    color: #add8e6 !important;
-  }
+  .referencesList li::before { color: var(--blue-light); }
+  .referencesList li a { color: var(--blue-light) !important; }
+  .referencesList li a:hover { color: #cceeff !important; }
 
   .logo { /* If .logo class is used */
-    filter: invert(1) hue-rotate(180deg); /* Better invert for logos */
+    filter: invert(0.9) hue-rotate(180deg) contrast(0.8); /* Adjusted invert */
   }
 
   .backButton {
     background-color: var(--blue-primary-dark);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
   }
   .backButton:hover {
-    background-color: #0b3a6a;
+    background-color: #0a3158;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+  }
+  
+  .codeBlock {
+    background: var(--gray-alpha-200);
+    color: var(--blue-light);
   }
 
-  .footer {
-    border-top-color: var(--gray-alpha-200);
-  }
-  .footer a {
-    color: #bbb;
-  }
-
+  .footer { border-top-color: var(--gray-alpha-200); }
+  .footer a { color: #bbb; }
+  .footer a:hover { color: var(--blue-light); }
 }
 
 /* -------------------------------------------------- */
-/* Responsive Overrides (Consolidated) */
+/* Responsive Overrides (Larger screens first, then smaller) */
 /* -------------------------------------------------- */
-@media (max-width: 768px) { /* Added a breakpoint for tablets too */
+@media (min-width: 1200px) { /* Styles for larger desktop screens */
   .page {
-    padding: 24px; /* Further reduced padding for tablets */
+    padding: 48px; /* More padding on large screens */
+    gap: 48px;
+  }
+  .main, .header, .results, .toc {
+    max-width: 1200px; /* Wider content on large screens */
+  }
+}
+
+
+@media (max-width: 768px) {
+  .page {
+    padding: 20px; /* Consistent base padding for tablet and down */
     gap: 24px;
   }
-  .main h1, .header h1 {
-    font-size: 2rem; /* Smaller H1 on tablets */
-  }
-  .description, .header p {
-    font-size: 1rem;
-  }
-  .results, .toc, .form {
-    max-width: 100%; /* Allow full width */
-  }
+  .main h1, .header h1 { font-size: 1.8rem; } /* Adjusted H1 */
+  .description, .header p { font-size: 0.95rem; } /* Adjusted p */
+  
+  .main { max-width: 100%; padding: 0 10px;} /* Ensure no overflow for main */
+  .results, .toc, .form { max-width: 100%; }
+  
+  .section { padding: 16px; }
+  .section h2 { font-size: 1.3em; }
 }
 
 
 @media (max-width: 600px) {
   .page {
-    padding: 16px; /* Reduced padding for mobile */
-    padding-bottom: 70px; /* Ensure space for back button */
-  }
-
-  .main {
-    align-items: stretch; /* Allow items to stretch on mobile */
-    gap: 24px;
-  }
-  
-  .main h1, .header h1 {
-    font-size: 1.8rem; /* Further reduce H1 */
-  }
-
-  .form button, .summaryButton, .ttsButton {
-    font-size: 1rem; /* Slightly smaller buttons */
-    padding: 12px;
-  }
-  
-  .section {
     padding: 16px;
+    padding-bottom: 80px; /* Space for back button */
   }
-  .section h2 {
-    font-size: 1.25em;
-  }
+  .main { gap: 20px; } /* Slightly reduce gap */
+  .main h1, .header h1 { font-size: 1.6rem; } /* Further reduce H1 */
 
-  .ctas { /* If used */
-    flex-direction: column;
+  .form button, .summaryButton, .ttsButton, .readMoreButton {
+    font-size: 0.9rem;
+    padding: 10px 14px; /* Adjusted button padding */
   }
-  .ctas a {
-    font-size: 14px;
-    height: 40px;
-    padding: 0 16px;
-  }
-  a.secondary {
-    min-width: auto;
-  }
+  
+  .section { padding: 12px; } /* Reduced padding */
+  .section h2 { font-size: 1.2em; }
+  .section p, .sectionText div, .sectionText span, .sectionText { line-height: 1.65; font-size: 0.95rem; }
+
+  .ctas { flex-direction: column; }
+  .ctas a { font-size: 14px; height: 40px; padding: 0 16px; }
+  a.secondary { min-width: auto; }
 
   .footer {
     flex-wrap: wrap;
-    align-items: center;
     justify-content: center;
-    gap: 16px;
-    padding-top: 24px;
+    gap: 12px; /* Reduced gap */
+    padding-top: 20px;
   }
   .backButton {
-    width: 40px;
-    height: 40px;
-    font-size: 1.2rem;
+    width: 44px; /* Adjusted */
+    height: 44px; /* Adjusted */
+    font-size: 1.3rem; /* Adjusted */
     bottom: 1rem;
     right: 1rem;
   }
