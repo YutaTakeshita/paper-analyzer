@@ -1,19 +1,8 @@
-.main h1 {
-  text-align: center;
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #222222;
-  margin: 24px 0 24px; /* top and bottom 24px */
-}
+/* page.module.css */
 
-/* Page description text */
-.description {
-  text-align: center;
-  font-size: 1.125rem;
-  color: #555555;
-  margin-bottom: 32px;
-}
-
+/* -------------------------------------------------- */
+/* Base Page & Main Layout */
+/* -------------------------------------------------- */
 .page {
   background-color: #f5f5f5; /* light gray background */
   --gray-rgb: 0, 0, 0;
@@ -24,574 +13,110 @@
   --button-secondary-hover: #f2f2f2;
 
   display: grid;
-  grid-template-rows: 20px 1fr 20px;
-  align-items: center;
-  justify-items: center;
+  grid-template-rows: auto 1fr auto; /* Header/Footer auto, main content takes remaining space */
+  align-items: center; /* Vertically center content in grid cells */
+  justify-items: center; /* Horizontally center content in grid cells */
   min-height: 100svh;
-  padding: 80px;
-  gap: 64px;
-  font-family: var(--font-geist-sans);
+  padding: 32px; /* Reduced padding for smaller screens, overridden by media query for larger */
+  gap: 32px; /* Reduced gap */
+  font-family: var(--font-geist-sans); /* Ensure this variable is defined, or use 'Noto Sans JP' */
 }
-
-@media (prefers-color-scheme: dark) {
-  .page {
-    --gray-rgb: 255, 255, 255;
-    --gray-alpha-200: rgba(var(--gray-rgb), 0.145);
-    --gray-alpha-100: rgba(var(--gray-rgb), 0.06);
-
-    --button-primary-hover: #ccc;
-    --button-secondary-hover: #1a1a1a;
-  }
-  .section h2 {
-    color: #000000 !important;
-  }
-  .section p {
-    color: #000000 !important;
-    line-height: 1.6;
-  }
-}
-/*引用番号の文字色 */
- .results .section:last-child li::before {
-   color: var(--text-default) !important;
- }
 
 .main {
+  grid-row-start: 2;
   display: flex;
   flex-direction: column;
   gap: 32px;
-  grid-row-start: 2;
-}
-
-.main ol {
-  font-family: var(--font-geist-mono);
-  padding-left: 0;
-  margin: 0;
-  font-size: 14px;
-  line-height: 24px;
-  letter-spacing: -0.01em;
-  list-style-position: inside;
-}
-
-.main li:not(:last-of-type) {
-  margin-bottom: 8px;
-}
-
-.main code {
-  font-family: inherit;
-  background: var(--gray-alpha-100);
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-
-/* Form layout */
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   width: 100%;
-  max-width: 600px;
-  margin: 0 auto;
-}
-.form input[type="file"] {
-  padding: 8px 12px;
-  border: 1px solid var(--gray-alpha-200);
-  border-radius: 4px;
-  background: transparent;
-  font-size: 1rem;
-}
-.form button {
-  padding: 14px;
-  font-size: 1.125rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--blue-primary);
-  color: #ffffff;
-  cursor: pointer;
-  transition: background 0.3s ease, transform 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-.form button:hover {
-  background-color: var(--blue-primary-dark);
-  transform: translateY(-2px);
-}
-.form button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 900px; /* Increased max-width slightly */
+  align-items: center; /* Center content within main */
 }
 
-/* Selected file name */
-.fileName {
-  font-size: 1rem;
-  color: #333333;
+.main h1 {
   text-align: center;
-  margin-top: 8px;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-heading); /* Use variable from globals.css */
+  margin: 24px 0;
 }
 
-/* Error message */
-.error {
-  color: #e00;
+.description {
   text-align: center;
-}
-
-/* Parsed results grid */
-.results {
-  display: grid;
-  gap: 24px;
-  grid-template-columns: 1fr;
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-/* Section card styling */
-.section {
-  display: flex;
-  flex-direction: column;
-  background-color: #ffffff !important;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e0e0e0;
-}
-.section h2 {
-  margin-bottom: 8px;
-  font-size: 1.25em;
-  color: var(--card-text) !important;
-}
-.section p {
-  line-height: 1.8;
-  white-space: pre-wrap;
-  word-break: break-word;
-  hyphens: auto;
-  max-width: 100%;
-  opacity: 1 !important;
-  color: #333333 !important;
-  text-align: left;
-  opacity: 1 !important;
-}
-
-.ctas {
-  display: flex;
-  gap: 16px;
-}
-
-.ctas a {
-  appearance: none;
-  border-radius: 128px;
-  height: 48px;
-  padding: 0 20px;
-  border: none;
-  border: 1px solid transparent;
-  transition:
-    background 0.2s,
-    color 0.2s,
-    border-color 0.2s;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  line-height: 20px;
-  font-weight: 500;
-}
-
-a.primary {
-  background: var(--foreground);
-  color: var(--background);
-  gap: 8px;
-}
-
-a.secondary {
-  border-color: var(--gray-alpha-200);
-  min-width: 158px;
-}
-
-.footer {
-  grid-row-start: 3;
-  display: flex;
-  gap: 24px;
-}
-
-.footer a {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.footer img {
-  flex-shrink: 0;
-}
-
-/* Enable hover only on non-touch devices */
-@media (hover: hover) and (pointer: fine) {
-  a.primary:hover {
-    background: var(--button-primary-hover);
-    border-color: transparent;
-  }
-
-  a.secondary:hover {
-    background: var(--button-secondary-hover);
-    border-color: transparent;
-  }
-
-  .footer a:hover {
-    text-decoration: underline;
-    text-underline-offset: 4px;
-  }
-}
-
-@media (max-width: 600px) {
-  .page {
-    padding: 32px;
-    padding-bottom: 80px;
-  }
-
-  .main {
-    align-items: center;
-  }
-
-  .main ol {
-    text-align: center;
-  }
-
-  .ctas {
-    flex-direction: column;
-  }
-
-  .ctas a {
-    font-size: 14px;
-    height: 40px;
-    padding: 0 16px;
-  }
-
-  a.secondary {
-    min-width: auto;
-  }
-
-  .footer {
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .logo {
-    filter: invert();
-  }
-  .header {
-    background-color: rgba(0, 0, 0, 0.5) !important;
-  }
-  .header h1 {
-    color: #ffffff !important;
-  }
-  .header p {
-    color: #e0e0e0 !important;
-  }
-  .section h2 {
-    color: #000000 !important;
-  }
-}
-
-/* Summary button styling */
-.summaryButton {
-  margin-top: 12px;
-  padding: 10px 16px;
   font-size: 1.125rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--blue-primary);
-  color: #ffffff;
-  cursor: pointer;
-  transition: background 0.3s ease, transform 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-.summaryButton:hover:enabled {
-  background-color: var(--blue-primary-dark);
-  transform: translateY(-2px);
-}
-.summaryButton:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-.summaryButton:disabled {
-  opacity: 0.6;
-  cursor: default;
+  color: var(--text-default); /* Use variable */
+  margin-bottom: 32px;
+  max-width: 700px; /* Limit width for readability */
 }
 
-/* Summary text styling */
-.summaryText {
-  margin-top: 8px;
-  padding: 12px;
-  background-color: #fff8e1;
-  border-left: 4px solid #ffb74d;
-  color: #333333;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-  overflow: auto;
-}
-
-/* Empty section message styling */
-.empty {
-  font-size: 1rem;
-  color: #888888;
-  font-style: italic;
-  margin-top: 8px;
-  text-align: center;
-}
-
-.ttsContainer {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-.ttsButton {
-  padding: 10px 16px;
-  font-size: 1.125rem;
-  font-weight: 800;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--blue-primary);
-  color: #ffffff;
-  cursor: pointer;
-  transition: background 0.3s ease, transform 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-.ttsButton:hover:enabled {
-  background-color: var(--blue-primary-dark);
-  transform: translateY(-2px);
-}
-.ttsButton:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-.ttsButton:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-.ttsContainer audio {
-  margin-top: 8px;
-  width: 100%;
-}
-
-/* Table of Contents (目次) */
-.toc {
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto 32px;
-  padding: 16px;
-  background-color: #ffffff !important;
-  border-radius: 8px;
-  border: none;
-  border-left: 4px solid #4474a8d6;
-}
-/* .toc p {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 8px;
-} */
-.toc summary {
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  outline: none;
-  user-select: none;
-  margin-bottom: 8px;
-  color: #333333; /* テキストをダークグレーに */
-}
-.toc ul {
-  margin: 0;
-  padding-left: 16px;
-  list-style-type: disc;
-}
-.toc li {
-  margin-bottom: 4px;
-}
-.toc li::marker {
-  color: #000000 !important;
-}
-.toc a {
-  color: #007bff !important;
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-.toc a:hover {
-  color: #0056b3 !important;
-}
-
-/* Add these styles to frontend/src/app/page.module.css */
+/* -------------------------------------------------- */
+/* Header (App Title & Description) */
+/* -------------------------------------------------- */
 .header {
   width: 100%;
-  background-color: var(--header-bg) !important;
-  backdrop-filter: blur(10px);
-  padding: 2rem;
+  max-width: 900px; /* Match main content width */
+  background-color: var(--header-bg) !important; /* Ensure it's applied, or var(--blue-light) */
+  backdrop-filter: blur(5px); /* Reduced blur */
+  padding: 1.5rem; /* Adjusted padding */
   border-radius: 12px;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem; /* Consistent margin */
   text-align: center;
+  box-shadow: var(--shadow-color) 0px 4px 12px; /* Use variable */
 }
 
 .header h1 {
-  margin: 0;
-  font-size: 2.5rem;
-  color: var(--header-title) !important;
+  margin: 0 0 0.5rem 0; /* Adjusted margin */
+  font-size: 2.25rem; /* Slightly adjusted */
+  color: var(--header-title, var(--text-heading)) !important; /* Fallback to text-heading */
 }
 
 .header p {
   margin-top: 0.5rem;
-  font-size: 1.125rem;
-  color: var(--header-text) !important;
-}
-
-.readMoreButton {
-  background: none;
-  border: none;
-  color: var(--primary);
-  padding: 0;
-  font-weight: 600;
-  margin-top: 0.5rem;
-  cursor: pointer;
-  transition: color 0.2s ease, background 0.2s ease;
-}
-.readMoreButton:hover {
-  color: var(--primary-dark);
-  background: rgba(0, 123, 255, 0.1);
-  text-decoration: none;
+  font-size: 1.1rem; /* Adjusted */
+  color: var(--header-text, var(--text-default)) !important; /* Fallback */
+  line-height: 1.6;
 }
 
 
-/* Citation styling: small, superscript, clear */
-.section sup.citation {
-  font-size: 0.75em;
-  vertical-align: super;
-  line-height: 1;
-  margin-left: 0.2em;
-  opacity: 1; /* ensure full opacity */
-}
-
-/* Add extra space below the last card only */
-.results .section:last-child {
-  margin-bottom: 50px;
-}
-
-/* Visually indicate references are searchable with an icon and hover effect */
-.results .section:last-child li a {
-  color: var(--blue-primary-dark);
-  text-decoration: none;
-  cursor: pointer;
-}
-.results .section:last-child li a:hover {
-  text-decoration: underline;
-  color: var(--blue-primary-dark);
-}
-
-/* Ensure clicking a reference scrolls it into view correctly */
-.results .section:last-child li[id^="ref"] {
-  scroll-margin-top: 4rem; /* adjust this value based on header height */
-}
-
-.main h1 {
-  text-align: center;
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #222222;
-  margin: 24px 0 24px; /* top and bottom 24px */
-}
-
-/* Page description text */
-.description {
-  text-align: center;
-  font-size: 1.125rem;
-  color: #555555;
-  margin-bottom: 32px;
-}
-
-.page {
-  background-color: #f5f5f5; /* light gray background */
-  --gray-rgb: 0, 0, 0;
-  --gray-alpha-200: rgba(var(--gray-rgb), 0.08);
-  --gray-alpha-100: rgba(var(--gray-rgb), 0.05);
-
-  --button-primary-hover: #383838;
-  --button-secondary-hover: #f2f2f2;
-
-  display: grid;
-  grid-template-rows: 20px 1fr 20px;
-  align-items: center;
-  justify-items: center;
-  min-height: 100svh;
-  padding: 80px;
-  gap: 64px;
-  font-family: var(--font-geist-sans);
-}
-
-@media (prefers-color-scheme: dark) {
-  .page {
-    --gray-rgb: 255, 255, 255;
-    --gray-alpha-200: rgba(var(--gray-rgb), 0.145);
-    --gray-alpha-100: rgba(var(--gray-rgb), 0.06);
-
-    --button-primary-hover: #ccc;
-    --button-secondary-hover: #1a1a1a;
-  }
-  .section h2 {
-    color: #000000 !important;
-  }
-  .section p {
-    color: #000000 !important;
-    line-height: 1.6;
-  }
-}
-
-.main {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  grid-row-start: 2;
-}
-
-.main ol {
-  font-family: var(--font-geist-mono);
-  padding-left: 0;
-  margin: 0;
-  font-size: 14px;
-  line-height: 24px;
-  letter-spacing: -0.01em;
-  list-style-position: inside;
-}
-
-.main li:not(:last-of-type) {
-  margin-bottom: 8px;
-}
-
-.main code {
-  font-family: inherit;
-  background: var(--gray-alpha-100);
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-
-/* Form layout */
+/* -------------------------------------------------- */
+/* Form & File Upload */
+/* -------------------------------------------------- */
 .form {
   display: flex;
   flex-direction: column;
   gap: 16px;
   width: 100%;
   max-width: 600px;
-  margin: 0 auto;
+  margin: 0 auto 32px auto; /* Add bottom margin */
+  padding: 20px;
+  background-color: var(--background);
+  border-radius: 8px;
+  box-shadow: var(--shadow-color) 0px 2px 8px;
 }
+
 .form input[type="file"] {
-  padding: 8px 12px;
-  border: 1px solid var(--gray-alpha-200);
-  border-radius: 4px;
+  padding: 10px 14px; /* Increased padding */
+  border: 1px solid var(--gray-border); /* Use variable */
+  border-radius: 6px; /* Consistent radius */
   background: transparent;
   font-size: 1rem;
+  color: var(--text-default);
 }
+/* Style for file input button (browser dependent) */
+.form input[type="file"]::file-selector-button {
+  padding: 8px 12px;
+  margin-right: 12px;
+  border: none;
+  background-color: var(--blue-primary);
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.form input[type="file"]::file-selector-button:hover {
+  background-color: var(--blue-primary-dark);
+}
+
+
 .form button {
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
@@ -602,201 +127,359 @@ a.secondary {
   border-radius: 6px;
   box-shadow: 0 2px 6px var(--shadow-color);
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.1s ease;
+  transition: background-color 0.2s ease, transform 0.1s ease;
 }
-.form button:hover {
+
+.form button:hover:enabled { /* Ensure hover only on enabled */
   background-color: var(--blue-primary-dark);
   transform: translateY(-1px);
 }
+.form button:active:enabled {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px var(--shadow-color);
+}
+.form button:disabled {
+  background-color: var(--gray-light);
+  color: #aaa;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
 
-/* Selected file name */
 .fileName {
-  font-size: 1rem;
-  color: #333333;
+  font-size: 0.9rem; /* Slightly smaller */
+  color: var(--text-default);
   text-align: center;
   margin-top: 8px;
+  font-style: italic;
 }
 
-/* Error message */
-.error {
-  color: #e00;
+/* -------------------------------------------------- */
+/* Status & Error Messages */
+/* -------------------------------------------------- */
+.statusMessage {
   text-align: center;
+  padding: 10px;
+  margin-bottom: 16px;
+  background-color: var(--blue-light);
+  color: var(--blue-primary-dark);
+  border-left: 4px solid var(--blue-primary);
+  border-radius: 4px;
 }
 
-/* Parsed results grid */
+.error {
+  color: #e53e3e; /* More specific error red */
+  text-align: center;
+  background-color: #fff5f5;
+  border: 1px solid #fc8181;
+  padding: 10px;
+  border-radius: 6px;
+  margin: 16px auto;
+  max-width: 600px;
+}
+
+/* -------------------------------------------------- */
+/* Results Area (Container for TOC, Sections, etc.) */
+/* -------------------------------------------------- */
 .results {
-  display: grid;
+  display: flex; /* Changed to flex for better control over children */
+  flex-direction: column;
   gap: 24px;
-  grid-template-columns: 1fr;
   width: 100%;
-  max-width: 800px;
+  max-width: 800px; /* Kept from original */
   margin: 0 auto;
 }
 
-/* Section card styling */
+/* Generic Section Card Styling (for Meta, Sections, Figures, Tables, References) */
 .section {
   display: flex;
   flex-direction: column;
-  background-color: #ffffff !important;
-  padding: 16px;
+  background-color: var(--background) !important; /* Use CSS var from globals */
+  padding: 20px; /* Consistent padding */
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e0e0e0;
+  box-shadow: var(--shadow-color) 0px 4px 12px;
+  border: 1px solid var(--gray-border);
 }
+
 .section h2 {
-  margin-bottom: 8px;
-  font-size: 1.25em;
-  color: var(--card-text) !important;
+  margin-top: 0; /* Remove default margin */
+  margin-bottom: 16px; /* Increased bottom margin */
+  font-size: 1.5em; /* Slightly larger */
+  color: var(--text-heading) !important; /* Use CSS var */
+  border-bottom: 1px solid var(--gray-border);
+  padding-bottom: 8px;
 }
+
+.section h3 { /* For subheadings within sections, e.g., "Figures in this section" */
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-size: 1.2em;
+  color: var(--text-heading);
+}
+.section h4 { /* For sub-subheadings, e.g., "Table X" */
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-size: 1.1em;
+  color: var(--text-heading);
+}
+
+
 .section p {
-  line-height: 1.8;
+  line-height: 1.7; /* Adjusted */
   white-space: pre-wrap;
   word-break: break-word;
-  hyphens: auto;
+  /* hyphens: auto; */ /* Can be performance intensive and layout-breaking sometimes */
   max-width: 100%;
-  opacity: 1 !important;
-  color: #333333 !important;
+  color: var(--text-default) !important; /* Use CSS var */
   text-align: left;
-  opacity: 1 !important;
+  margin-bottom: 1rem; /* Add consistent bottom margin */
+}
+.section p:last-child {
+  margin-bottom: 0;
 }
 
-.ctas {
-  display: flex;
-  gap: 16px;
+
+.sectionText { /* Class for div containing dangerouslySetInnerHTML */
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-default);
+  text-align: left;
+}
+.sectionText p { /* Paragraphs within sectionText */
+   margin-bottom: 1em;
 }
 
-.ctas a {
-  appearance: none;
-  border-radius: 128px;
-  height: 48px;
-  padding: 0 20px;
-  border: none;
-  border: 1px solid transparent;
-  transition:
-    background 0.2s,
-    color 0.2s,
-    border-color 0.2s;
+
+/* -------------------------------------------------- */
+/* Table of Contents (TOC) */
+/* -------------------------------------------------- */
+.toc {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto 32px;
+  padding: 16px;
+  background-color: var(--blue-light); /* Use variable from globals */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  border: 1px solid var(--gray-border);
+}
+
+.toc summary {
+  color: var(--text-heading); /* Use variable */
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  line-height: 20px;
+  outline: none;
+  user-select: none;
+}
+
+.toc ul {
+  margin: 0;
+  padding-left: 20px; /* Indent list items */
+  list-style-type: disc; /* Use disc for TOC */
+}
+
+.toc li {
+  margin-bottom: 0.5rem;
+}
+
+.toc li::marker {
+  color: var(--blue-primary) !important; /* Consistent marker color */
+}
+
+.toc a {
+  color:  var(--blue-primary-dark) !important; /* Use variable */
+  text-decoration: none;
+  transition: color 0.2s ease;
   font-weight: 500;
 }
 
-a.primary {
-  background: var(--foreground);
-  color: var(--background);
-  gap: 8px;
+.toc a:hover {
+  color: var(--blue-primary) !important;
+  text-decoration: underline;
 }
 
-a.secondary {
-  border-color: var(--gray-alpha-200);
-  min-width: 158px;
+/* -------------------------------------------------- */
+/* Meta Information Section */
+/* -------------------------------------------------- */
+.metaSection p {
+  margin-bottom: 0.5rem; /* Smaller margin for meta items */
+  line-height: 1.5;
+}
+.metaSection strong {
+  color: var(--text-heading);
 }
 
-.footer {
-  grid-row-start: 3;
+/* -------------------------------------------------- */
+/* Sections (Content) */
+/* -------------------------------------------------- */
+.readMoreButton {
+  background: none;
+  border: 1px solid var(--blue-primary);
+  color: var(--blue-primary);
+  padding: 6px 12px; /* Adjusted padding */
+  font-weight: 600;
+  margin-top: 1rem; /* Consistent margin */
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  border-radius: 4px;
+  align-self: flex-start; /* Align to the left */
+}
+.readMoreButton:hover {
+  color: white;
+  background-color: var(--blue-primary-dark);
+  border-color: var(--blue-primary-dark);
+  text-decoration: none;
+}
+
+/* Citation styling (global.css has sup.citation) */
+.section sup.citation a { /* Make citation links clearer */
+  color: var(--blue-primary) !important;
+  text-decoration: none;
+  font-weight: bold;
+}
+.section sup.citation a:hover {
+  text-decoration: underline;
+}
+
+/* For TEI-derived figures within sections (usually just captions) */
+.figureItemTei {
+  margin: 1rem 0;
+  padding: 0.5rem;
+  background-color: var(--gray-alpha-100);
+  border-left: 3px solid var(--gray-border);
+  font-size: 0.9em;
+}
+.figureItemTei figcaption {
+  color: var(--text-default);
+}
+
+/* -------------------------------------------------- */
+/* Extracted Media (Figures & Tables from PDF) */
+/* -------------------------------------------------- */
+.extractedMediaSection h2 { /* Keep this distinct */
+   /* Same as .section h2 or can be different */
+}
+
+.figuresGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Responsive grid */
+  gap: 16px;
+  margin-top: 1rem;
+}
+
+.figureItem {
+  border: 1px solid var(--gray-border);
+  border-radius: 6px;
+  padding: 8px;
+  text-align: center;
+  background-color: var(--gray-alpha-100);
+}
+.figureItem img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.figureItem figcaption {
+  font-size: 0.85rem;
+  color: var(--text-default);
+}
+
+.tableContainer {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+.tableScrollWrapper {
+  overflow-x: auto; /* Enable horizontal scroll for wide tables */
+  padding-bottom: 8px; /* Space for scrollbar */
+}
+.tableScrollWrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.tableScrollWrapper th,
+.tableScrollWrapper td {
+  border: 1px solid var(--gray-border);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.tableScrollWrapper th {
+  background-color: var(--gray-alpha-100);
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+/* -------------------------------------------------- */
+/* References Section */
+/* -------------------------------------------------- */
+.referencesSection h2 {
+  /* Same as .section h2 or can be different */
+}
+.referencesList {
+  list-style: none; /* Custom markers will be used */
+  counter-reset: ref;
+  padding-left: 0; /* Remove default padding */
+  margin-top: 1rem;
+}
+.referencesList li {
+  counter-increment: ref;
   display: flex;
-  gap: 24px;
+  align-items: baseline; /* Align marker and text nicely */
+  margin-bottom: 0.75em; /* Increased spacing */
+  line-height: 1.6;
 }
-
-.footer a {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.footer img {
+.referencesList li::before {
+  content: "[" counter(ref) "]"; /* Changed marker style */
+  display: inline-block;
+  min-width: 2.5ch; /* Adjusted for potential 3-digit numbers + brackets */
+  margin-right: 0.75em; /* Adjusted spacing */
+  text-align: right;
   flex-shrink: 0;
+  color: var(--blue-primary); /* Consistent color */
+  font-weight: bold;
+}
+.referencesList li a { /* Links within reference items */
+  color: var(--blue-primary-dark) !important;
+  text-decoration: underline;
+}
+.referencesList li a:hover {
+  color: var(--blue-primary) !important;
 }
 
-/* Enable hover only on non-touch devices */
-@media (hover: hover) and (pointer: fine) {
-  a.primary:hover {
-    background: var(--button-primary-hover);
-    border-color: transparent;
-  }
-
-  a.secondary:hover {
-    background: var(--button-secondary-hover);
-    border-color: transparent;
-  }
-
-  .footer a:hover {
-    text-decoration: underline;
-    text-underline-offset: 4px;
-  }
+/* For scrolling to reference ID (from citation click) */
+.referencesList li[id^="ref"] {
+  scroll-margin-top: 4rem; /* Adjust based on fixed header height, if any */
 }
 
-@media (max-width: 600px) {
-  .page {
-    padding: 32px;
-    padding-bottom: 80px;
-  }
-
-  .main {
-    align-items: center;
-  }
-
-  .main ol {
-    text-align: center;
-  }
-
-  .ctas {
-    flex-direction: column;
-  }
-
-  .ctas a {
-    font-size: 14px;
-    height: 40px;
-    padding: 0 16px;
-  }
-
-  a.secondary {
-    min-width: auto;
-  }
-
-  .footer {
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-  }
+/* -------------------------------------------------- */
+/* Action Buttons (Summary, TTS) & Related Elements */
+/* -------------------------------------------------- */
+.actionsContainer { /* Container for summary and TTS buttons */
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column; /* Stack buttons vertically */
+  gap: 12px; /* Space between button groups */
+  align-items: flex-start; /* Align buttons to the left */
 }
 
-@media (prefers-color-scheme: dark) {
-  .logo {
-    filter: invert();
-  }
-  .header {
-    background-color: rgba(0, 0, 0, 0.5) !important;
-  }
-  .header h1 {
-    color: #ffffff !important;
-  }
-  .header p {
-    color: #e0e0e0 !important;
-  }
-  .section h2 {
-    color: #000000 !important;
-  }
-}
-
-/* Summary & TTS button styling */
 .summaryButton,
 .ttsButton {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
+  margin-top: 0; /* Reset margin-top as .actionsContainer handles spacing */
+  padding: 0.6rem 1rem; /* Adjusted padding */
+  font-size: 0.9rem; /* Adjusted font size */
   font-weight: 600;
   color: #ffffff;
   background-color: var(--blue-primary);
   border: none;
   border-radius: 6px;
-  box-shadow: 0 2px 6px var(--shadow-color);
+  box-shadow: 0 2px 4px var(--shadow-color); /* Softer shadow */
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.1s ease;
+  transition: background-color 0.2s ease, transform 0.1s ease;
 }
 .summaryButton:hover:enabled,
 .ttsButton:hover:enabled {
@@ -807,21 +490,42 @@ a.secondary {
 .ttsButton:disabled {
   opacity: 0.6;
   cursor: default;
+  background-color: var(--gray-light); /* More distinct disabled state */
+  color: #999;
+  transform: none;
+  box-shadow: none;
 }
 
-/* Summary text styling */
 .summaryText {
   margin-top: 8px;
   padding: 12px;
-  background-color: #e7f3ff;
-  border-left: 4px solid #007bff;
-  color: #000000;
-  line-height: 1.5;
+  background-color: var(--blue-light); /* Use variable */
+  border-left: 4px solid var(--blue-primary); /* Use variable */
+  color: var(--text-default); /* Use variable */
+  line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
   overflow: auto;
   border-radius: 4px;
+  font-size: 0.95em;
 }
+
+.ttsContainer {
+  margin-top: 0; /* Reset as .actionsContainer handles spacing */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%; /* Allow audio player to take full width */
+}
+.ttsContainer audio {
+  margin-top: 8px;
+  width: 100%;
+  height: 40px; /* Consistent height for audio player */
+}
+.ttsContainer audio:disabled { /* This won't work directly, but for styling if needed */
+  opacity: 0.6;
+}
+
 
 /* Empty section message styling */
 .empty {
@@ -830,155 +534,14 @@ a.secondary {
   font-style: italic;
   margin-top: 8px;
   text-align: center;
+  padding: 20px;
+  background-color: var(--gray-alpha-100);
+  border-radius: 6px;
 }
 
-.ttsContainer {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-.ttsContainer audio {
-  margin-top: 8px;
-  width: 100%;
-}
-
-/* Table of Contents (目次) */
-/* Table of Contents (目次) */
-.toc {
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto 32px;
-  padding: 16px;
-  background-color: var(--primary-light);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
-  border: none;
-}
-/* .toc p {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 8px;
-} */
-.toc summary {
-  color: var(--text-default);
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-  cursor: pointer;
-}
-.toc ul {
-  margin: 0;
-  padding-left: 1rem;
-  list-style-type: none;
-}
-.toc li {
-  margin-bottom: 0.5rem;
-}
-.toc li::marker {
-  color: #000000 !important;
-}
-.toc a {
-  color:  var(--text-default);
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-.toc a:hover {
-  color: #003f7f !important;
-  text-decoration: underline;
-}
-
-/* Add these styles to frontend/src/app/page.module.css */
-.header {
-  width: 100%;
-  background-color: var(--header-bg) !important;
-  backdrop-filter: blur(10px);
-  padding: 2rem;
-  border-radius: 12px;
-  margin-bottom: 0.5rem;
-  text-align: center;
-}
-
-.header h1 {
-  margin: 0;
-  font-size: 2.5rem;
-  color: var(--header-title) !important;
-}
-
-.header p {
-  margin-top: 0.5rem;
-  font-size: 1.125rem;
-  color: var(--header-text) !important;
-}
-
-.readMoreButton {
-  background: none;
-  border: none;
-  color: #007bff;
-  padding: 0;
-  font-weight: 600;
-  margin-top: 0.5rem;
-  cursor: pointer;
-  transition: color 0.2s ease, background 0.2s ease;
-}
-.readMoreButton:hover {
-  color: #0056b3;
-  background: rgba(0,123,255,0.1);
-}
-
-
-/* Citation styling: small, superscript, clear */
-.section sup.citation {
-  font-size: 0.75em;
-  vertical-align: super;
-  line-height: 1;
-  margin-left: 0.2em;
-  opacity: 1; /* ensure full opacity */
-}
-
-/* Add extra space below the last card only */
-.results .section:last-child {
-  margin-bottom: 50px;
-}
-
-/* Visually indicate references are searchable with an icon and hover effect */
-.results .section:last-child li a {
-  color: #007bff;
-  text-decoration: none;
-  cursor: pointer;
-}
-.results .section:last-child li a:hover {
-  text-decoration: underline;
-  color: #0056b3;
-}
-
-/* Custom reference list marker with dynamic width and proper indentation */
-.results .section:last-child ol {
-  list-style: none;
-  counter-reset: ref;
-  margin: 0;
-  padding: 0;
-}
-.results .section:last-child li {
-  counter-increment: ref;
-  display: flex;
-  align-items: baseline;
-  margin-bottom: 0.5em;
-}
-.results .section:last-child li::before {
-  content: counter(ref) ".";
-  display: inline-block;
-  width: 2ch;       /* Reserve space for up to two-digit numbers */
-  margin-right: 1em;
-  text-align: right;
-  flex-shrink: 0;
-}
-.results .section:last-child li a {
-  text-decoration: none;
-  color: #007bff;
-}
-
-/* Modern floating back button */
+/* -------------------------------------------------- */
+/* Floating Back Button */
+/* -------------------------------------------------- */
 .backButton {
   position: fixed;
   bottom: 1.5rem;
@@ -994,8 +557,9 @@ a.secondary {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.1s ease;
+  transition: background-color 0.2s ease, transform 0.1s ease;
   z-index: 1000;
+  font-size: 1.5rem; /* Make arrow bigger */
 }
 .backButton:hover {
   background-color: var(--blue-primary-dark);
@@ -1003,4 +567,342 @@ a.secondary {
 }
 .backButton:active {
   transform: translateY(0);
+}
+
+/* -------------------------------------------------- */
+/* General Helper Styles (from original .main context) */
+/* -------------------------------------------------- */
+/* These were originally under .main but might be applicable more broadly or need to be specific to sections */
+.main ol { /* This might be too general, consider .referencesList or specific ol */
+  font-family: var(--font-geist-mono); /* Should geist-mono be defined in globals? */
+  padding-left: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  list-style-position: inside;
+}
+
+.main li:not(:last-of-type) { /* Also potentially too general */
+  margin-bottom: 8px;
+}
+
+.main code { /* Also potentially too general */
+  font-family: inherit;
+  background: var(--gray-alpha-100);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: var(--blue-primary-dark); /* Make code stand out a bit */
+}
+
+
+/* -------------------------------------------------- */
+/* Footer & CTAs (Call to Action buttons, if any from original) */
+/* -------------------------------------------------- */
+/* .ctas and .footer styles from original are kept if still used */
+.ctas {
+  display: flex;
+  gap: 16px;
+  margin-top: 2rem; /* Add some space if used at the end of sections */
+}
+
+.ctas a {
+  appearance: none;
+  border-radius: 128px;
+  height: 48px;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 500;
+  text-decoration: none; /* Ensure links are not underlined by default */
+}
+
+a.primary { /* This was in the original, ensure it's still used or adapt */
+  background: var(--foreground);
+  color: var(--background);
+  gap: 8px;
+}
+
+a.secondary { /* This was in the original */
+  border-color: var(--gray-alpha-200);
+  min-width: 158px;
+  color: var(--text-default);
+}
+
+.footer {
+  grid-row-start: 3;
+  display: flex;
+  gap: 24px;
+  padding-top: 32px; /* Add padding above footer */
+  border-top: 1px solid var(--gray-border);
+  width: 100%;
+  max-width: 900px; /* Match main content width */
+  justify-content: center; /* Center footer content */
+}
+
+.footer a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-default);
+  text-decoration: none;
+}
+
+.footer img {
+  flex-shrink: 0;
+}
+
+/* -------------------------------------------------- */
+/* Dark Mode Overrides (Consolidated) */
+/* -------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  .page {
+    background-color: #121212; /* Darker background for page */
+    --gray-rgb: 255, 255, 255;
+    --gray-alpha-200: rgba(var(--gray-rgb), 0.145);
+    --gray-alpha-100: rgba(var(--gray-rgb), 0.06);
+    --button-primary-hover: #ccc;
+    --button-secondary-hover: #333; /* Darker secondary hover */
+  }
+
+  .main h1 {
+    color: var(--foreground); /* From globals.css dark mode */
+  }
+  .description {
+    color: #bbb; /* Lighter gray for description */
+  }
+
+  .header {
+    background-color: rgba(var(--gray-rgb), 0.08) !important; /* Use variables */
+  }
+  .header h1 {
+    color: var(--foreground) !important;
+  }
+  .header p {
+    color: #ddd !important;
+  }
+
+  .form {
+    background-color: #1e1e1e; /* Darker form background */
+    box-shadow: rgba(var(--gray-rgb), 0.05) 0px 2px 8px;
+  }
+  .form input[type="file"] {
+    border-color: var(--gray-alpha-200);
+    color: var(--foreground);
+  }
+   .form input[type="file"]::file-selector-button {
+    background-color: var(--blue-primary-dark); /* Darker button */
+    color: #eee;
+  }
+  .form input[type="file"]::file-selector-button:hover {
+    background-color: #0b3a6a; /* Even darker */
+  }
+
+
+  .section {
+    background-color: #1e1e1e !important; /* Darker section cards */
+    border-color: var(--gray-alpha-200);
+    box-shadow: rgba(var(--gray-rgb), 0.05) 0px 4px 12px;
+  }
+  .section h2 {
+    color: var(--foreground) !important;
+    border-bottom-color: var(--gray-alpha-200);
+  }
+   .section h3, .section h4 {
+    color: var(--foreground);
+  }
+  .section p, .sectionText {
+    color: #ccc !important; /* Lighter text on dark background */
+  }
+  .section sup.citation a {
+    color: var(--blue-light) !important;
+  }
+
+  .readMoreButton {
+    color: var(--blue-light);
+    border-color: var(--blue-light);
+  }
+  .readMoreButton:hover {
+    color: var(--background);
+    background-color: var(--blue-light);
+  }
+  
+  .figureItemTei {
+    background-color: var(--gray-alpha-200);
+    border-left-color: var(--gray-alpha-100);
+  }
+  .figureItemTei figcaption {
+    color: #bbb;
+  }
+
+  .figureItem {
+    border-color: var(--gray-alpha-200);
+    background-color: var(--gray-alpha-200);
+  }
+  .figureItem figcaption {
+    color: #bbb;
+  }
+  .tableScrollWrapper th {
+    background-color: var(--gray-alpha-200);
+    color: var(--foreground);
+  }
+   .tableScrollWrapper th, .tableScrollWrapper td {
+    border-color: var(--gray-alpha-100);
+   }
+
+
+  .summaryButton, .ttsButton {
+    background-color: var(--blue-primary-dark); /* Darker buttons in dark mode */
+  }
+  .summaryButton:hover:enabled, .ttsButton:hover:enabled {
+    background-color: #0b3a6a; /* Even darker hover */
+  }
+  .summaryButton:disabled, .ttsButton:disabled {
+    background-color: #2a2a2a;
+    color: #777;
+  }
+
+
+  .summaryText {
+    background-color: #2a2a2a; /* Darker summary background */
+    border-left-color: var(--blue-primary);
+    color: #ddd;
+  }
+
+  .empty {
+    color: #777;
+    background-color: var(--gray-alpha-200);
+  }
+
+  .toc {
+    background-color: #1e1e1e !important;
+    border-left-color: var(--blue-primary-dark);
+    border-color: var(--gray-alpha-200);
+  }
+  .toc summary {
+    color: var(--foreground);
+  }
+  .toc li::marker {
+    color: var(--blue-light) !important;
+  }
+  .toc a {
+    color: var(--blue-light) !important;
+  }
+  .toc a:hover {
+    color: #add8e6 !important; /* Lighter blue for hover */
+  }
+
+  .referencesList li::before {
+    color: var(--blue-light);
+  }
+  .referencesList li a {
+    color: var(--blue-light) !important;
+  }
+   .referencesList li a:hover {
+    color: #add8e6 !important;
+  }
+
+  .logo { /* If .logo class is used */
+    filter: invert(1) hue-rotate(180deg); /* Better invert for logos */
+  }
+
+  .backButton {
+    background-color: var(--blue-primary-dark);
+  }
+  .backButton:hover {
+    background-color: #0b3a6a;
+  }
+
+  .footer {
+    border-top-color: var(--gray-alpha-200);
+  }
+  .footer a {
+    color: #bbb;
+  }
+
+}
+
+/* -------------------------------------------------- */
+/* Responsive Overrides (Consolidated) */
+/* -------------------------------------------------- */
+@media (max-width: 768px) { /* Added a breakpoint for tablets too */
+  .page {
+    padding: 24px; /* Further reduced padding for tablets */
+    gap: 24px;
+  }
+  .main h1, .header h1 {
+    font-size: 2rem; /* Smaller H1 on tablets */
+  }
+  .description, .header p {
+    font-size: 1rem;
+  }
+  .results, .toc, .form {
+    max-width: 100%; /* Allow full width */
+  }
+}
+
+
+@media (max-width: 600px) {
+  .page {
+    padding: 16px; /* Reduced padding for mobile */
+    padding-bottom: 70px; /* Ensure space for back button */
+  }
+
+  .main {
+    align-items: stretch; /* Allow items to stretch on mobile */
+    gap: 24px;
+  }
+  
+  .main h1, .header h1 {
+    font-size: 1.8rem; /* Further reduce H1 */
+  }
+
+  .form button, .summaryButton, .ttsButton {
+    font-size: 1rem; /* Slightly smaller buttons */
+    padding: 12px;
+  }
+  
+  .section {
+    padding: 16px;
+  }
+  .section h2 {
+    font-size: 1.25em;
+  }
+
+  .ctas { /* If used */
+    flex-direction: column;
+  }
+  .ctas a {
+    font-size: 14px;
+    height: 40px;
+    padding: 0 16px;
+  }
+  a.secondary {
+    min-width: auto;
+  }
+
+  .footer {
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding-top: 24px;
+  }
+  .backButton {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+    bottom: 1rem;
+    right: 1rem;
+  }
 }
