@@ -44,10 +44,14 @@ app.add_middleware(
 
 # OpenAI
 openai.api_key = os.getenv("OPENAI_API_KEY")
+OPENAI_SUMMARY_MODEL = os.getenv("OPENAI_SUMMARY_MODEL", "gpt-4.1-mini")
 
 # AWS Polly
 aws_region = os.getenv("AWS_REGION", "ap-northeast-1")
 polly = boto3.client("polly", region_name=aws_region)
+AWS_POLLY_VOICE_ID = os.getenv("AWS_POLLY_VOICE_ID", "Tomoko") # デフォルトを "Tomoko" に
+AWS_POLLY_OUTPUT_FORMAT = os.getenv("AWS_POLLY_OUTPUT_FORMAT", "mp3")
+AWS_POLLY_ENGINE = os.getenv("AWS_POLLY_ENGINE", "neural") # 'standard' または 'neural'
 
 # GCP clients
 from google.cloud import storage, firestore # storage を import
@@ -238,29 +242,95 @@ async def api_parse(file: UploadFile = File(...)):
 # ─── 要約 ─────────────────────────────────────────────────────────────
 class SummarizeRequest(BaseModel):
     text: str
-    max_tokens: Optional[int] = 1500
+    max_tokens: Optional[int] = 10000 # フロントエンドから渡されるか、ここでデフォルト値を調整
+    # 論文要約の場合、もう少しトークン数が必要になる可能性も考慮
+    # 例えば、1セクションあたり平均して500-1000語程度と仮定し、
+    # 日本語だと1トークンあたりおおよそ1-2文字なので、
+    # 1500トークンだと750-1500文字程度の要約が期待できる。論文のセクションの長さによる。
+    # gpt-4o-miniの最大コンテキストウィンドウと出力トークン制限も考慮。
+    # ここではリクエストボディでmax_tokensを受け取るか、固定値を設定。
 
 @app.post("/summarize")
 async def summarize(req: SummarizeRequest):
-    resp = openai.chat.completions.create(
-        model="gpt-4o-mini", # または設定に応じたモデル
-        messages=[{"role":"system","content":"You are a helpful assistant that summarizes academic paper sections."}, {"role":"user","content":f"Please summarize the following text:\n\n{req.text}"}],
-        max_tokens=req.max_tokens
-    )
-    return {"summary": resp.choices[0].message.content.strip()}
+    # 医療・保健分野の論文の要約であることを意識したシステムプロンプト
+    system_prompt = """あなたは、医療および保健分野の学術論文を専門とする高度なAIアシスタントです。
+提供された論文のセクション（原文）を読み解き、以下の指示に従って日本語で要約を生成してください。
+
+指示:
+1. 原文の内容を正確に捉え、主要なポイントを抽出してください。
+2. 関連する現在の医学的・科学的な潮流や背景文脈を考慮し、必要であればそれを簡潔に補足情報として含めてください。ただし、原文にない情報を過度に推測したり、付け加えたりしないでください。
+3. もし原文中に引用や参考文献への言及（例: [1], (Smith et al., 2020) など）があれば、それらを省略せず、要約文中の対応する箇所に適切に含めてください。
+4. 生成される要約文は、段落分けや改行を適切に行い、非常に読みやすいレイアウトにしてください。箇条書きが適切な場合は活用してください。
+5. 専門用語は保持しつつも、可能な範囲で平易な表現を心がけてください。
+6. 要約は、客観的かつ中立的な視点を保ってください。"""
+
+    user_prompt = f"""以下の論文セクションを上記の指示に従って要約してください。
+
+---原文ここから---
+{req.text}
+---原文ここまで---
+
+要約（日本語）:"""
+
+    try:
+        model_to_use = OPENAI_SUMMARY_MODEL # 環境変数から取得したモデル名を使用
+        logger.info(f"Requesting summary from OpenAI. Model: {OPENAI_SUMMARY_MODEL}. Max tokens: {req.max_tokens}")
+        resp = openai.chat.completions.create(
+            model=model_to_use, # ご指定のモデル を使用
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=req.max_tokens, 
+            temperature=0.3, # 少し創造性を抑え、事実に忠実にするための調整 (0.0-1.0)
+            # top_p=1, # 通常はtemperatureかtop_pのどちらかを調整
+            # presence_penalty=0, # 新しいトピックについて話すことに対するペナルティ
+            # frequency_penalty=0 # 同じ行を繰り返すことに対するペナルティ
+        )
+        summary_text = resp.choices[0].message.content.strip()
+        logger.info("Summary received from OpenAI successfully.")
+        return {"summary": summary_text}
+    except openai.APIError as e:
+        logger.error(f"OpenAI API returned an API Error: {e}", exc_info=True)
+        raise HTTPException(status_code=502, detail=f"OpenAI API Error: {e}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred while calling OpenAI API: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error during summarization: {e}")
 
 # ─── TTS ──────────────────────────────────────────────────────────────
 @app.post("/tts")
 async def tts(body: dict):
     text = body.get("text") or ""
     if not text:
-        raise HTTPException(400, "Field 'text' is required")
+        logger.warn("TTS request received with no text.")
+        raise HTTPException(status_code=400, detail="Field 'text' is required")
+    
     try:
-        audio_response = polly.synthesize_speech(Text=text, OutputFormat="mp3", VoiceId="Mizuki") # 例: Mizuki (日本語女性)
+        logger.info(f"Requesting TTS from AWS Polly. VoiceId: {AWS_POLLY_VOICE_ID}, Engine: {AWS_POLLY_ENGINE}, Format: {AWS_POLLY_OUTPUT_FORMAT}")
+        
+        request_params = {
+            'Text': text,
+            'OutputFormat': AWS_POLLY_OUTPUT_FORMAT,
+            'VoiceId': AWS_POLLY_VOICE_ID,
+            'Engine': AWS_POLLY_ENGINE
+        }
+        # ニューラル音声は特定のリージョンやボイスでのみ利用可能な場合があるので注意
+        # もし AWS_POLLY_ENGINE が 'neural' で、選択した VoiceId がニューラル対応していない場合エラーになる可能性がある
+
+        audio_response = polly.synthesize_speech(**request_params)
+        
+        logger.info("TTS audio received from AWS Polly successfully.")
         return Response(content=audio_response["AudioStream"].read(), media_type="audio/mpeg")
-    except Exception as e:
+    
+    except Exception as e: # botocore.exceptions.BotoCoreError や ClientError など、より具体的にキャッチすることも検討
         logger.error(f"AWS Polly TTS error: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"TTS generation failed: {str(e)}")
+        # エラーレスポンスをもう少し具体的にする
+        error_detail = f"TTS generation failed: {type(e).__name__}"
+        if hasattr(e, 'response') and 'Error' in e.response:
+            error_detail += f" - {e.response['Error']['Code']}: {e.response['Error']['Message']}"
+        else:
+            error_detail += f" - {str(e)}"
+        raise HTTPException(status_code=500, detail=error_detail)
 
 # ─── GCS アップロード & Cloud Run Job ─────────────────────────────────
 @app.post("/api/cermine/upload")

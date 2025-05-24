@@ -216,7 +216,7 @@ export default function Home() {
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/summarize`, 
         { 
           text: plainText,
-          max_tokens: 300 
+          max_tokens: 10000 
         }
       );
       setSummaries(prev => ({ ...prev, [sectionName]: response.data.summary }));
