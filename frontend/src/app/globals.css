@@ -66,10 +66,36 @@ a {
 sup.citation {
   font-size: 0.75em;
   vertical-align: super;
+  line-height: 1; /* Ensure line height doesn't expand too much */
   margin-left: 0.2em;
-  /* テーマに合わせた色 */
-  color: #333;;
-  opacity: 0.7; /* 少し淡く */
+  margin-right: 0.2em;
+  color: var(--blue-primary); /* ライトモード時の基本色 (リンク色に合わせる) */
+  opacity: 1; /* 透明度は不要なら1 */
+  font-weight: normal; /* 通常の太さ */
+}
+
+sup.citation a {
+  color: inherit !important; /* 親要素(sup)の色を継承 */
+  text-decoration: none;
+  font-weight: bold; /* 引用番号のリンクは太字に */
+}
+
+sup.citation a:hover {
+  text-decoration: underline;
+  color: var(--blue-primary-dark) !important; /* ホバー時の色 */
+}
+
+/* ダークモード時の上書き */
+@media (prefers-color-scheme: dark) {
+  /* ... (他のダークモードスタイル) ... */
+
+  sup.citation {
+    color: var(--blue-light) !important; /* ダークモード時の明るい色 */
+  }
+
+  sup.citation a:hover {
+    color: #add8e6 !important; /* ダークモード時のホバー色 (例: より明るい青) */
+  }
 }
 
 /* Global smooth scrolling and anchor offset */

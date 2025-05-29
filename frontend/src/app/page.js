@@ -4,21 +4,20 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import styles from './page.module.css'
 
-const logger = console; // または適切なロガーライブラリ
+const logger = console; 
 
 export default function Home() {
   const [file, setFile] = useState(null);
-  const [jobId, setJobId] = useState(null);
-  const [status, setStatus] = useState(null); // 'uploading', 'processing', 'pending', 'done', 'failed', 'error_polling'
+  const [status, setStatus] = useState(null); 
   const [error, setError] = useState(null);
 
   const [meta, setMeta] = useState(null);
   const [sections, setSections] = useState(null);
   const [references, setReferences] = useState(null);
-  const [figuresData, setFiguresData] = useState([]); // PDFから抽出された図
-  const [tablesData, setTablesData] = useState([]);   // PDFから抽出された表
+  const [figuresData, setFiguresData] = useState([]); 
+  const [tablesData, setTablesData] = useState([]);   
 
-  const sectionNames = sections ? sections.map(sec => sec.head) : [];
+  const [sectionNames, setSectionNames] = useState([]); // 初期値を空配列に
   const [summaries, setSummaries] = useState({});
   const [loadingSummaries, setLoadingSummaries] = useState({});
   const [audioUrls, setAudioUrls] = useState({});
@@ -30,15 +29,39 @@ export default function Home() {
     logger.log("BACKEND_URL:", process.env.NEXT_PUBLIC_BACKEND_URL);
   }, []);
 
+  // 戻るボタンの表示ロジック (Canvasの内容に置き換え)
   useEffect(() => {
-    const onHashChange = () => {
-      if (window.location.hash.startsWith('#ref')) {
+    const handleHashChange = () => { 
+      if (window.location.hash && 
+          (window.location.hash.startsWith('#b') || 
+           sections?.some(s => s.head && `#${encodeURIComponent(s.head)}` === window.location.hash) || 
+           window.location.hash === '#references_list_title')) {
         setShowBackButton(true);
+      } else {
+        setShowBackButton(false); 
       }
     };
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+
+    handleHashChange(); 
+    window.addEventListener('hashchange', handleHashChange);
+    
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, [sections]); 
+
+  // sectionsが更新されたらsectionNamesも更新
+  useEffect(() => {
+    if (sections) {
+      const names = sections.map(sec => sec.head).filter(Boolean);
+      // アブストラクトをセクションとして表示する場合、その見出しも目次に含めるか検討
+      // 今回はmeta.abstractを別途表示するので、sectionNamesはそのまま
+      setSectionNames(names);
+    } else {
+      setSectionNames([]);
+    }
   }, [sections]);
+
 
   const goBack = () => {
     setShowBackButton(false);
@@ -46,13 +69,11 @@ export default function Home() {
   };
 
   const resetState = () => {
-    // file は setFile(null) でリセットされるが、<input type="file"> の表示は別途クリアが必要
     const fileInput = document.querySelector('input[type="file"]');
     if (fileInput) {
-        fileInput.value = ""; // ファイル選択フィールドをクリア
+        fileInput.value = ""; 
     }
-    setFile(null); // ファイルステートもクリア
-    setJobId(null);
+    setFile(null); 
     setStatus(null);
     setError(null);
     setMeta(null);
@@ -73,150 +94,78 @@ export default function Home() {
       setError('PDFファイルを選択してください');
       return;
     }
-    resetState(); // 新しいアップロードの前に状態をリセット
+    resetState(); 
     setStatus('uploading');
 
     const form = new FormData();
     form.append('file', file);
 
     try {
-      logger.log(`Uploading file to: ${process.env.NEXT_PUBLIC_BACKEND_URL}/api/cermine/upload`);
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/cermine/upload`,
-        form
-      );
-      const { jobId: newJobId } = res.data;
-      if (newJobId) {
-        setJobId(newJobId);
-        setStatus('processing');
-        logger.log(`Upload successful, jobId: ${newJobId}`);
+      const endpoint = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/parse`; 
+      logger.log(`Uploading file and parsing with GROBID via: ${endpoint}`);
+      
+      const res = await axios.post(endpoint, form, {
+        timeout: 600000 
+      }); 
+      
+      logger.info('Full result data fetched from backend:', res.data);
+      const resultData = res.data;
+
+      setMeta(resultData.meta || null);
+      setReferences(resultData.references || null);
+      setFiguresData(resultData.figures || []);
+      setTablesData(resultData.tables || []);
+
+      if (resultData.sections && Array.isArray(resultData.sections)) {
+        const processedSections = resultData.sections.map(sec => {
+          return { 
+            head: sec.head || "無題のセクション", 
+            text: (sec.text || ""), // 空文字列をデフォルトに
+            figures: sec.figures || [] 
+          };
+        });
+        setSections(processedSections);
+        const initialExpandedState = {};
+        processedSections.forEach(sec => {
+            if (sec.head) initialExpandedState[sec.head] = false; 
+        });
+        setExpanded(initialExpandedState);
       } else {
-        setError('ジョブIDの取得に失敗しました。');
-        setStatus(null);
-        logger.error('Failed to get jobId from upload response:', res.data);
+        setError('解析結果のセクション形式が正しくありません。');
+        logger.error('Sections data is not an array or is missing:', resultData);
+        setSections(null);
       }
+      setStatus('done');
+
     } catch (err) {
-      logger.error('Upload failed:', err);
+      logger.error('Upload or processing failed:', err);
       if (err.response) {
-        setError(`アップロード失敗: ${err.response.data.detail || err.response.statusText} (Status: ${err.response.status})`);
+        setError(`処理失敗: ${err.response.data.detail || err.response.statusText} (Status: ${err.response.status})`);
       } else if (err.request) {
-        setError('アップロード失敗: バックエンドからの応答がありません。ネットワークを確認してください。');
+        setError('処理失敗: バックエンドサーバーからの応答がありません。ネットワークとサーバーの状態を確認してください。');
       } else {
-        setError(`アップロード失敗: ${err.message}`);
+        setError(`処理失敗: ${err.message}`);
       }
-      setStatus(null);
+      setStatus('failed');
     }
   }
 
-  useEffect(() => {
-    let interval;
-    if (jobId && (status === 'processing' || status === 'pending')) { // pending もポーリング対象に含める
-      interval = setInterval(async () => {
-        try {
-          logger.log(`Polling status for jobId: ${jobId}`);
-          const res = await axios.get(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/cermine/status?jobId=${jobId}`
-          );
-          logger.log('Status poll response:', res.data);
-
-          if (res.data.status === 'done') {
-            clearInterval(interval);
-            setStatus('done');
-            logger.info(`Job ${jobId} is done. Fetching result from /api/get-result-json`);
-            
-            try {
-              const resultResponse = await axios.get(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/get-result-json?jobId=${jobId}`
-              );
-              logger.info('Full result data fetched:', resultResponse.data);
-
-              const resultData = resultResponse.data;
-              setMeta(resultData.meta || null);
-              setReferences(resultData.references || null);
-              setFiguresData(resultData.figures || []);
-              setTablesData(resultData.tables || []);
-
-              if (resultData.sections && Array.isArray(resultData.sections)) {
-                const linkedSections = resultData.sections.map(sec => {
-                  const newHtml = (sec.text || "").replace(
-                    /<sup\s+[^>]*class=['"]citation['"][^>]*>\s*(\d+)[^<]*<\/sup>/gi,
-                    (_, num) => `<sup class="citation"><a href="#ref${num}">${num}</a></sup>`
-                  );
-                  return { 
-                    head: sec.head || "無題のセクション", 
-                    text: newHtml, 
-                    figures: sec.figures || [] 
-                  };
-                });
-                setSections(linkedSections);
-              } else {
-                setError('解析結果のセクション形式が正しくありません。');
-                logger.error('Sections data is not an array or is missing:', resultData);
-                setSections(null);
-              }
-            } catch (fetchResultError) {
-              logger.error('Error fetching or processing result json:', fetchResultError);
-              if (fetchResultError.response) {
-                setError(`結果取得エラー(JSON): ${fetchResultError.response.data.detail || fetchResultError.response.statusText} (Status: ${fetchResultError.response.status})`);
-              } else if (fetchResultError.request) {
-                setError('結果取得エラー(JSON): バックエンドからの応答がありません。');
-              } else {
-                setError(`結果取得エラー(JSON): ${fetchResultError.message}`);
-              }
-              setSections(null);
-            }
-          } else if (res.data.status === 'failed') {
-            clearInterval(interval);
-            setStatus('failed');
-            setError(`ジョブ処理失敗: ${res.data.errorMessage || '不明なエラーがバックエンドで発生しました。'}`);
-            logger.error('Job processing failed on backend:', res.data);
-          } else if (res.data.status === 'pending' || res.data.status === 'processing') {
-            setStatus(res.data.status);
-          } else if (res.data.status) {
-            logger.warn('Unexpected job status received:', res.data.status);
-            setStatus(res.data.status);
-          } else {
-            logger.error('Invalid status response:', res.data);
-            setError('無効なステータスレスポンスを受け取りました。');
-            clearInterval(interval);
-            setStatus('error_polling');
-          }
-        } catch (err) {
-          logger.error('Error polling status:', err);
-          clearInterval(interval);
-          if (!error && status !== 'failed' && status !== 'done') { 
-            if (err.response) {
-              setError(`ステータス取得ポーリングエラー: ${err.response.data.detail || err.response.statusText} (Status: ${err.response.status})`);
-            } else if (err.request) {
-              setError('ステータス取得ポーリングエラー: バックエンドからの応答がありません。');
-            } else {
-              setError(`ステータス取得ポーリングエラー: ${err.message}`);
-            }
-            setStatus('error_polling');
-          }
-        }
-      }, 3000); 
-    }
-    return () => clearInterval(interval);
-  }, [jobId, status, error]);
-
-  async function handleSummarize(sectionName, sectionText) {
+  async function handleSummarize(sectionName, sectionHtmlText) {
     logger.log(`Requesting summary for: ${sectionName}`);
     setLoadingSummaries(prev => ({ ...prev, [sectionName]: true }));
     setError(null); 
     try {
-      const plainText = (sectionText || "").replace(/<[^>]+>/g, '');
+      const plainText = (sectionHtmlText || "").replace(/<[^>]+>/g, '');
       if (!plainText.trim()) {
         setSummaries(prev => ({ ...prev, [sectionName]: "要約するテキストがありません。" }));
         setLoadingSummaries(prev => ({ ...prev, [sectionName]: false }));
         return;
       }
-
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/summarize`, 
         { 
           text: plainText,
-          max_tokens: 10000 
+          max_tokens: 1000
         }
       );
       setSummaries(prev => ({ ...prev, [sectionName]: response.data.summary }));
@@ -236,39 +185,48 @@ export default function Home() {
     }
   }
 
-  async function handleTTS(sectionName, textToSpeak) {
+  async function handleTTS(sectionName, textToSpeakHtml) {
     logger.log(`Requesting TTS for: ${sectionName}`);
     setLoadingAudio(prev => ({ ...prev, [sectionName]: true }));
     setError(null);
-    setAudioUrls(prev => ({ ...prev, [sectionName]: null })); // 古いURLをクリア
+    setAudioUrls(prev => ({ ...prev, [sectionName]: null })); 
 
     try {
-      const plainText = (textToSpeak || "").replace(/<[^>]+>/g, '');
+      const plainText = (textToSpeakHtml || "").replace(/<[^>]+>/g, '');
       if (!plainText.trim()) {
         logger.warn(`No text to speak for section: ${sectionName}`);
         setLoadingAudio(prev => ({ ...prev, [sectionName]: false }));
         return;
       }
-
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/tts`, 
         { text: plainText }, 
         { responseType: 'blob' } 
       );
-      
       const url = URL.createObjectURL(response.data);
       setAudioUrls(prev => ({ ...prev, [sectionName]: url }));
-      
     } catch (err) {
       logger.error(`Error generating TTS for ${sectionName}:`, err);
       let errorMsg = "音声の生成に失敗しました。";
       if (err.response) {
         try {
-          const errorJsonText = await err.response.data.text();
-          const errorJson = JSON.parse(errorJsonText);
-          errorMsg += `: ${errorJson.detail || err.response.statusText || '詳細不明'}`;
-        } catch (parseErr) {
-          errorMsg += `: ${err.response.statusText || 'サーバーエラー詳細不明'}`;
+          let detail = 'サーバーエラー詳細不明';
+          if (err.response.data && typeof err.response.data.text === 'function') {
+            const errorJsonText = await err.response.data.text();
+            try {
+                const errorJson = JSON.parse(errorJsonText);
+                detail = errorJson.detail || err.response.statusText;
+            } catch (parseErr) {
+                detail = errorJsonText || err.response.statusText;
+            }
+          } else if (err.response.data && err.response.data.detail) {
+            detail = err.response.data.detail;
+          } else {
+            detail = err.response.statusText;
+          }
+          errorMsg += `: ${detail}`;
+        } catch (e) {
+          errorMsg += `: ${err.response.statusText || 'サーバーエラー詳細取得失敗'}`;
         }
       } else if (err.request) {
         errorMsg += " (サーバーからの応答がありません)";
@@ -280,6 +238,27 @@ export default function Home() {
       setLoadingAudio(prev => ({ ...prev, [sectionName]: false }));
     }
   }
+
+  const getPlainTextPreview = (htmlString, maxLength = 500) => {
+    if (typeof window === 'undefined' || !htmlString) {
+        return { previewHtml: "", isLong: false, fullTextHtml: htmlString || "" };
+    }
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlString;
+    const plainText = tempDiv.textContent || tempDiv.innerText || "";
+    
+    if (plainText.length > maxLength) {
+      // プレビューはHTMLのまま、最初の部分を表示 (より安全な方法を検討する余地あり)
+      // 例えば、最初の数個の<p>タグだけを取り出すなど。
+      // ここでは単純に、isLongフラグだけを正しく設定し、表示はhtmlTextのままにする。
+      // プレビュー表示は、expanded[name]がfalseの時にtextPreviewHtmlを使う。
+      // textPreviewHtmlには、HTML構造を壊さない形で短縮したHTMLを入れるのが理想。
+      // 簡単のため、ここではプレーンテキストのプレビューを返すように戻し、
+      // 表示側でHTMLかプレーンテキストかを選択する。
+      return { previewText: plainText.slice(0, maxLength) + '…', isLong: true, fullTextHtml: htmlString };
+    }
+    return { previewText: htmlString, isLong: false, fullTextHtml: htmlString }; // 短い場合はHTMLのまま
+  };
 
   return (
     <main className={styles.main}>
@@ -294,13 +273,13 @@ export default function Home() {
       <form onSubmit={handleUpload} className={styles.form}>
         <input
           type="file"
-          id="fileInput" // IDを追加してリセットしやすくする
+          id="fileInput"
           accept="application/pdf"
           onChange={e => setFile(e.target.files[0])}
-          disabled={status === 'processing' || status === 'uploading'}
+          disabled={status === 'uploading'}
         />
-        <button type="submit" disabled={!file || status === 'processing' || status === 'uploading'}>
-          {(status === 'processing' || status === 'uploading') ? '処理中...' : 'Upload & Parse'}
+        <button type="submit" disabled={!file || status === 'uploading'}>
+          {(status === 'uploading') ? '処理中...' : 'Upload & Parse'}
         </button>
       </form>
 
@@ -309,11 +288,27 @@ export default function Home() {
 
       {status === 'done' && meta && (
         <section className={`${styles.section} ${styles.metaSection}`}>
-          <h2>メタ情報</h2>
-          <p><strong>タイトル:</strong> {meta.title || 'N/A'}</p>
-          <p><strong>著者:</strong> {meta.authors && meta.authors.length > 0 ? meta.authors.join(', ') : 'N/A'}</p>
-          <p><strong>ジャーナル:</strong> {meta.journal || 'N/A'}</p>
-          <p><strong>発行日:</strong> {meta.issued || 'N/A'}</p>
+          {meta.title && <h2>{meta.title}</h2>}
+          <p><strong>Author:</strong> {meta.authors && meta.authors.length > 0 ? meta.authors.join(', ') : 'N/A'}</p>
+          <p><strong>Journal:</strong> {meta.journal || 'N/A'}</p>
+          <p><strong>Published Date:</strong> {meta.issued || 'N/A'}</p>
+          
+          {/* アブストラクト本文とAI要約を最初から表示 */}
+          {meta.abstract && (
+            <div className={styles.abstractContainer}>
+              <div className={styles.abstractOriginal}>
+                <h3>abstract</h3>
+                {/* アブストラクト本文は複数段落の可能性があるので、改行を<br>に変換 */}
+                <div dangerouslySetInnerHTML={{ __html: meta.abstract.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>') }} />
+              </div>
+              {meta.abstract_summary && (
+                <div className={styles.abstractSummary}>
+                  <h3>要約</h3>
+                  <div dangerouslySetInnerHTML={{ __html: meta.abstract_summary.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>') }} />
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
       
@@ -322,12 +317,10 @@ export default function Home() {
           <summary>目次（全{sectionNames.length}セクション）</summary>
           <ul>
             {sectionNames.map(name => (
-              <li key={name}>
-                <a href={`#${name}`}>{name}</a>
-              </li>
+              name && <li key={name}><a href={`#${encodeURIComponent(name)}`}>{name}</a></li>
             ))}
             {references && references.length > 0 && (
-              <li><a href="#references">参考文献</a></li>
+              <li><a href="#references_list_title">References</a></li>
             )}
           </ul>
         </details>
@@ -337,32 +330,49 @@ export default function Home() {
         <div className={styles.results}>
           {sections.map(sec => {
             const name = sec.head;
-            const text = sec.text; // これはHTML文字列
+            const htmlText = sec.text; 
+            const plainTextForCheck = (htmlText || "").replace(/<[^>]+>/g, '').trim();
+            const { previewText, isLong: isTextLong } = getPlainTextPreview(htmlText, 500); // プレビューはプレーンテキストベースで判断
+            
             const isReferenceSection =
               typeof name === 'string' && (name.toLowerCase().includes('reference') || name.toLowerCase().includes('参考文献'));
 
+            // セクション名があり、かつ (本文があるか、またはセクション内図があるか、または参考文献セクション) の場合に表示
+            if (name && (plainTextForCheck || (sec.figures && sec.figures.length > 0) || isReferenceSection )) {
+              // OK
+            } else if (!name && plainTextForCheck) { // セクション名はないが本文はある場合（稀だが）
+              // OK
+            }
+            else { // 上記以外（実質的に空のセクション）は表示しない
+                return null;
+            }
+
             return (
-              <section key={name} id={name} className={styles.section}>
-                <h2>{name}</h2>
+              <section key={name || `section-${Math.random()}`} id={name ? encodeURIComponent(name) : undefined} className={styles.section}>
+                {name && <h2>{name}</h2>}
                 <div
                   className={styles.sectionText}
-                  dangerouslySetInnerHTML={{
-                    __html: isReferenceSection
-                      ? text
-                      : (expanded[name] || (text && text.length <= 200) ? text : (text ? text.slice(0, 200) + '…' : ''))
-                  }}
+                  dangerouslySetInnerHTML={{ 
+                    __html: isReferenceSection || !isTextLong // 参考文献または短いセクションは常に全文(HTML)表示
+                              ? htmlText 
+                              : (expanded[name] ? htmlText : previewText) // プレビューはプレーンテキストの可能性あり注意
+                  }} 
                 />
+                {/* セクション内の図キャプション表示 (TEI XML由来) */}
                 {sec.figures && sec.figures.length > 0 && (
-                  <div className={styles.figures}>
-                    <h4>このセクションの図 (TEIより):</h4>
-                    {sec.figures.map((fig, index) => (
+                  <div className={styles.figuresInTei}>
+                    <h4>このセクションの図 (論文内キャプションより):</h4>
+                    {sec.figures
+                      .filter(fig => fig.caption && fig.caption.trim() !== "") 
+                      .map((fig, index) => (
                       <figure key={fig.id || `sec-fig-${name}-${index}`} className={styles.figureItemTei}>
-                        <figcaption>図 {fig.id || index + 1}: {fig.caption || '(キャプション無し)'}</figcaption>
+                        <figcaption>図 {fig.id || index + 1}: {fig.caption}</figcaption>
                       </figure>
                     ))}
                   </div>
                 )}
-                {!isReferenceSection && text && text.length > 200 && (
+                
+                {!isReferenceSection && isTextLong && plainTextForCheck && (
                   <button
                     className={styles.readMoreButton}
                     onClick={() =>
@@ -373,32 +383,35 @@ export default function Home() {
                   </button>
                 )}
 
-                {!isReferenceSection && (
+                {!isReferenceSection && plainTextForCheck && ( // 本文がある場合のみアクションボタン表示
                   <div className={styles.actionsContainer}>
                     <button
                       className={styles.summaryButton}
-                      onClick={() => handleSummarize(name, text)}
+                      onClick={() => handleSummarize(name, htmlText)} 
                       disabled={loadingSummaries[name]}
                     >
                       {loadingSummaries[name] ? '要約中...' : 'このセクションを要約'}
                     </button>
                     {summaries[name] && (
-                      <p className={styles.summaryText}>{summaries[name]}</p>
+                      <p className={styles.summaryText}>{summaries[name].replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>
                     )}
                     <div className={styles.ttsContainer}>
                       <button
                         className={styles.ttsButton}
                         onClick={() =>
-                          handleTTS(name, summaries[name] || text) 
+                          handleTTS(name, summaries[name] || htmlText) 
                         }
                         disabled={
-                          loadingAudio[name] || !(summaries[name] || text)
+                          loadingAudio[name] || !(summaries[name] || plainTextForCheck)
                         }
                       >
                         {loadingAudio[name] ? '音声生成中...' : 'このセクションを読み上げ ▶'}
                       </button>
                       {audioUrls[name] && (
-                        <audio controls src={audioUrls[name]} onEnded={() => URL.revokeObjectURL(audioUrls[name])}/>
+                        <audio controls src={audioUrls[name]} onEnded={() => {
+                          URL.revokeObjectURL(audioUrls[name]);
+                          setAudioUrls(prev => ({...prev, [name]: null})); 
+                        }}/>
                       )}
                     </div>
                   </div>
@@ -409,30 +422,39 @@ export default function Home() {
         </div>
       )}
 
+      {/* PDF全体から抽出された図 */}
       {status === 'done' && figuresData && figuresData.length > 0 && (
         <section className={`${styles.section} ${styles.extractedMediaSection}`}>
           <h2>抽出された図 (PDF全体より)</h2>
           <div className={styles.figuresGrid}>
-            {figuresData.map((fig, index) => (
+            {figuresData
+              .filter(fig => fig.data_uri && fig.data_uri.length > 'data:image/png;base64,'.length + 100)
+              .map((fig, index) => (
               <figure key={fig.id || fig.index || `global-fig-${index}`} className={styles.figureItem}>
                 {fig.data_uri && <img src={fig.data_uri} alt={`Figure page ${fig.page}, index ${fig.index}`} />}
                 <figcaption>図 (ページ: {fig.page}, インデックス: {fig.index})</figcaption>
               </figure>
             ))}
+            {figuresData.filter(fig => fig.data_uri && fig.data_uri.length > 'data:image/png;base64,'.length + 100).length === 0 && (
+              <p className={styles.empty}>表示できる図は見つかりませんでした。</p>
+            )}
           </div>
         </section>
       )}
 
+      {/* PDF全体から抽出された表 */}
       {status === 'done' && tablesData && tablesData.length > 0 && (
         <section className={`${styles.section} ${styles.extractedMediaSection}`}>
           <h2>抽出された表 (PDF全体より)</h2>
-          {tablesData.map((table, tableIndex) => (
+          {tablesData
+            .filter(table => table.data && Array.isArray(table.data) && table.data.length > 0 && table.data.some(row => Array.isArray(row) && row.length > 0 && row.some(cell => cell && cell.toString().trim() !== "")))
+            .map((table, tableIndex) => (
             <div key={table.table_id || `global-table-${tableIndex}`} className={styles.tableContainer}>
               <h4>表 {table.table_id || tableIndex + 1}</h4>
               <div className={styles.tableScrollWrapper}>
                 <table>
                   <tbody>
-                    {table.data && table.data.map((row, rowIndex) => (
+                    {table.data.map((row, rowIndex) => (
                       <tr key={rowIndex}>
                         {row.map((cell, cellIndex) => (
                           <td key={cellIndex}>{cell}</td>
@@ -444,25 +466,48 @@ export default function Home() {
               </div>
             </div>
           ))}
+          {tablesData.filter(table => table.data && Array.isArray(table.data) && table.data.length > 0 && table.data.some(row => Array.isArray(row) && row.length > 0 && row.some(cell => cell && cell.toString().trim() !== ""))).length === 0 && (
+            <p className={styles.empty}>表示できる表は見つかりませんでした。</p>
+          )}
         </section>
       )}
-      
+
+      {/* 参考文献セクション */}
       {status === 'done' && references && references.length > 0 && (
-        <section className={`${styles.section} ${styles.referencesSection}`} id="references">
-          <h2>参考文献</h2>
+        <section className={`${styles.section} ${styles.referencesSection}`} id="references_list_title">
+          <h2>References</h2>
           <ol className={styles.referencesList}>
-            {references.map(ref => (
-              <li key={ref.id || ref.text.slice(0,30)} id={ref.id ? ref.id.replace(/^R/, 'ref') : null}>
-                {ref.text}
-              </li>
-            ))}
+            {/* ★ここからが page_js_add_search_links の内容 */}
+            {references.map((ref, index) => {
+              const refText = ref.text; // バックエンドで整形済みのテキスト
+              const searchQuery = ref.search_query || refText; // バックエンドから 'search_query' が来ればそれを使う
+
+              // Google Scholar 検索URL
+              const googleScholarUrl = `https://scholar.google.com/scholar?q=${encodeURIComponent(searchQuery)}`;
+              // PubMed 検索URL (より詳細な検索フィールドを指定することも可能)
+              const pubmedUrl = `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(searchQuery)}`;
+
+              return (
+                <li key={ref.id || `ref-item-${index}`} 
+                    id={ref.id}> 
+                  {refText}
+                  <div className={styles.referenceSearchLinks}>
+                    <a href={googleScholarUrl} target="_blank" rel="noopener noreferrer">Google Scholar</a>
+                    {' | '}
+                    <a href={pubmedUrl} target="_blank" rel="noopener noreferrer">PubMed</a>
+                    {/* 他の検索エンジンへのリンクも追加可能 */}
+                  </div>
+                </li>
+              );
+            })}
+            {/* ★ここまでが page_js_add_search_links の内容 */}
           </ol>
         </section>
       )}
 
       {showBackButton && (
         <button className={styles.backButton} onClick={goBack}>
-          ▲ 戻る
+          ▲ もどる
         </button>
       )}
     </main>
