@@ -4,72 +4,99 @@
 /* Base Page & Main Layout */
 /* -------------------------------------------------- */
 .page {
-  background-color: var(--gray-light); /* Use variable from globals.css */
-  display: grid;
-  grid-template-rows: auto 1fr auto; /* Header and footer auto, main content takes remaining space */
-  justify-items: center; /* Horizontally center grid items like .main */
-  align-items: start; /* Content starts from the top of the page grid area */
+  background-color: var(--app-background);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   min-height: 100svh;
-  padding: 20px; /* Base padding, adjusted by media queries */
-  gap: 24px; /* Base gap, adjusted by media queries */
-  font-family: 'Noto Sans JP', var(--font-geist-sans, sans-serif); /* Fallback for --font-geist-sans */
+  padding: 2rem clamp(1rem, 4vw, 3rem); /* 上下 2rem, 左右は可変 */
+  gap: 2rem;
+  font-family: var(--font-sans);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .main {
-  grid-row-start: 2;
   display: flex;
   flex-direction: column;
-  gap: 32px; /* Space between direct children of main */
+  gap: 2.5rem;
   width: 100%;
-  max-width: 1100px; /* Default max-width for content, adjusted in media queries */
-  padding: 0 16px; /* Horizontal padding for content within .main */
-  margin: 0 auto; /* Ensure .main itself is centered if .page justify-items isn't enough */
+  max-width: 1200px; /* コンテンツ全体の最大幅 */
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem; /* .mainの内側の左右パディング */
+  padding-right: 1rem;
+  box-sizing: border-box;
 }
 
-/* Page Title (H1 directly under .main, if any, separate from .header card's H1) */
-.main > h1 { /* More specific selector for the main page title */
+/* Page Title (H1 directly under .main) */
+.main > h1 {
   text-align: center;
-  font-size: 2.25rem;
+  font-size: clamp(2rem, 5vw, 3rem);
   font-weight: 700;
-  color: var(--text-heading);
-  margin: 24px 0;
+  color: var(--app-foreground);
+  margin-bottom: 0.5rem;
 }
 
-/* Page Description (P directly under .main, if any) */
+/* Page Description (P directly under .main) */
 .main > .description {
   text-align: center;
-  font-size: 1.1rem;
-  color: var(--text-default);
-  margin-bottom: 32px;
-  max-width: 700px; /* Limit width for better readability */
-  line-height: 1.6;
+  font-size: clamp(1rem, 2.5vw, 1.125rem);
+  color: var(--app-secondary);
+  margin-bottom: 1rem;
+  max-width: 70ch;
+  line-height: 1.7;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* -------------------------------------------------- */
 /* Header Card (App Title & Sub-Description) */
 /* -------------------------------------------------- */
 .header {
-  width: 100%; /* Takes full width of its parent (.main) */
-  background-color: var(--header-bg, var(--blue-light)) !important; /* Fallback color */
-  backdrop-filter: blur(5px);
-  padding: 1.5rem;
-  border-radius: 12px;
+  width: 100%;
+  background-color: var(--header-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 2rem 1.5rem;
+  border-radius: 16px;
   text-align: center;
-  box-shadow: var(--shadow-color) 0px 4px 12px;
-  margin-bottom: 24px; /* Consistent bottom margin */
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--app-border);
 }
 
-.header h1 { /* H1 inside the .header card */
-  margin: 0 0 0.5rem 0;
-  font-size: 2rem;
-  color: var(--header-title, var(--text-heading)) !important;
+/* ロゴとタイトルを囲むコンテナのスタイル */
+.titleContainer {
+  display: flex;
+  align-items: center; /* ★ ロゴとタイトルを垂直方向の中央に揃える */
+  justify-content: center; /* ★ コンテナ内のアイテムを水平方向の中央に寄せる */
+  gap: 0.8rem; /* ★ ロゴとタイトルの間のスペースを調整 (例: 0.75rem -> 0.8rem) */
+  margin-bottom: 1rem; /* ★ タイトルコンテナと下の説明文との間のマージン */
+}
+/* ロゴ画像のスタイル */
+.logoImage {
+  /* Next.jsのImageコンポーネントでwidth/heightが指定されていれば、
+     ここでのサイズ指定は必須ではないことが多いです。
+     微調整が必要な場合はコメントを外してください。 */
+  object-fit: contain;  /* アスペクト比を保つ */
+  flex-shrink: 0; /* ロゴが縮まないようにする */
 }
 
-.header p { /* P inside the .header card */
-  margin-top: 0.5rem;
-  font-size: 1rem;
-  color: var(--header-text, var(--text-default)) !important;
+.header h1 {
+  margin: 0 0 0.75rem 0;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  color: var(--header-title);
+  font-weight: 700;
+}
+
+.header p {
+  margin-top: 25px;
+  font-size: clamp(0.9rem, 2vw, 1.15rem);
+  color: var(--header-text);
   line-height: 1.6;
+  max-width: 65ch;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* -------------------------------------------------- */
@@ -78,101 +105,120 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 1.25rem;
   width: 100%;
-  max-width: 600px;
-  margin: 0 auto 32px auto; /* Centered with bottom margin */
-  padding: 24px;
-  background-color: var(--background);
-  border-radius: 8px;
-  box-shadow: var(--shadow-color) 0px 2px 8px;
+  max-width: 650px;
+  margin: 0 auto 2rem auto;
+  padding: 2rem;
+  background-color: var(--app-card-background);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--app-border);
 }
 
 .form input[type="file"] {
-  padding: 10px 14px;
-  border: 1px solid var(--gray-border);
-  border-radius: 6px;
-  background: transparent;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background-color: var(--app-background);
   font-size: 1rem;
-  color: var(--text-default);
+  color: var(--app-foreground);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+.form input[type="file"]:focus-visible {
+  border-color: var(--app-primary);
+  box-shadow: 0 0 0 2px rgba(var(--app-primary-rgb), 0.2);
+}
+
 .form input[type="file"]::file-selector-button {
-  padding: 8px 12px;
-  margin-right: 12px;
+  padding: 0.6rem 1rem;
+  margin-right: 1rem;
   border: none;
-  background-color: var(--blue-primary);
-  color: white;
-  border-radius: 4px;
+  background-color: var(--app-primary);
+  color: var(--app-primary-text);
+  border-radius: 6px;
   cursor: pointer;
+  font-weight: 500;
   transition: background-color 0.2s ease;
 }
 .form input[type="file"]::file-selector-button:hover {
-  background-color: var(--blue-primary-dark);
+  background-color: var(--app-primary-hover);
 }
 
 .form button {
-  padding: 0.85rem 1.5rem; /* Slightly more padding */
+  padding: 0.85rem 1.75rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #ffffff;
-  background-color: var(--blue-primary);
+  color: var(--app-primary-text);
+  background-color: var(--app-primary);
   border: none;
-  border-radius: 6px;
-  box-shadow: 0 2px 6px var(--shadow-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.1s ease;
+  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
 }
 .form button:hover:enabled {
-  background-color: var(--blue-primary-dark);
+  background-color: var(--app-primary-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-md);
 }
 .form button:active:enabled {
   transform: translateY(0);
-  box-shadow: 0 1px 3px var(--shadow-color);
+  box-shadow: var(--shadow-xs);
 }
 .form button:disabled {
-  background-color: var(--gray-light);
-  color: #aaa;
-  cursor: default;
+  background-color: var(--app-secondary);
+  opacity: 0.6;
+  color: rgba(255,255,255,0.7);
+  cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+@media (prefers-color-scheme: dark) {
+  .form button:disabled {
+    color: rgba(0,0,0,0.5);
+  }
 }
 
 .fileName {
   font-size: 0.9rem;
-  color: var(--text-default);
+  color: var(--app-secondary);
   text-align: center;
-  margin-top: 8px;
+  margin-top: 0.5rem;
   font-style: italic;
+  word-break: break-all;
 }
 
 /* -------------------------------------------------- */
 /* Status & Error Messages */
 /* -------------------------------------------------- */
-.statusMessage {
-  text-align: center;
-  padding: 12px 15px; /* Slightly more padding */
-  margin: 16px auto;
-  max-width: 600px;
-  background-color: var(--blue-light);
-  color: var(--blue-primary-dark);
-  border-left: 4px solid var(--blue-primary);
-  border-radius: 4px;
+.statusMessage, .error {
+  text-align: left;
+  padding: 1rem 1.25rem;
+  margin: 1rem auto;
+  max-width: 650px;
+  border-radius: 8px;
   font-weight: 500;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.statusMessage {
+  background-color: var(--app-info-bg);
+  color: var(--app-info);
+  border: 1px solid var(--app-info);
 }
 
 .error {
-  color: #c53030; /* Darker error red */
-  text-align: center;
-  background-color: #fed7d7; /* Lighter red background */
-  border: 1px solid #f56565;
-  padding: 12px 15px;
-  border-radius: 6px;
-  margin: 16px auto;
-  max-width: 600px;
-  font-weight: 500;
+  background-color: var(--app-error-bg);
+  color: var(--app-error);
+  border: 1px solid var(--app-error);
 }
+.error p {
+  margin-bottom: 0;
+}
+
 
 /* -------------------------------------------------- */
 /* Results Area (Container for TOC, Sections, etc.) */
@@ -180,64 +226,76 @@
 .results {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 2rem;
   width: 100%;
-  margin: 0 auto; /* Centered within .main if .main has align-items:stretch */
 }
 
 /* Generic Section Card Styling */
 .section {
-  display: flex;
-  flex-direction: column;
-  background-color: var(--background) !important;
-  padding: 24px;
+  background-color: var(--app-card-background);
+  padding: 1.75rem;
   border-radius: 12px;
-  box-shadow: var(--shadow-color) 0px 4px 16px;
-  border: 1px solid var(--gray-border);
-  width: 100%; /* Take full width of .results */
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--app-border);
+  width: 100%;
 }
-.section:last-of-type { /* Use last-of-type for the last section among siblings */
-  margin-bottom: 40px;
+.section:last-of-type {
+  margin-bottom: 0;
 }
 
-.section h2 {
+/* Section Headings */
+.section h2,
+.section h3,
+.section h4,
+.section h5,
+.section h6 {
   margin-top: 0;
-  margin-bottom: 16px;
-  font-size: 1.4em; /* Adjusted */
-  color: var(--text-heading) !important;
-  border-bottom: 1px solid var(--gray-border);
-  padding-bottom: 10px;
+  margin-bottom: 1.25rem;
+  color: var(--app-foreground);
+  border-bottom: 1px solid var(--app-border);
+  padding-bottom: 0.75rem;
+  font-weight: 600;
 }
-.section h3 {
-  margin-top: 20px;
-  margin-bottom: 10px;
-  font-size: 1.2em;
-  color: var(--text-heading);
+.section h2 { font-size: 1.5rem; }
+.section h3 { font-size: 1.35rem; border-bottom-style: dashed;}
+.section h4 { font-size: 1.2rem; font-weight: 500; border-bottom-style: dotted;}
+.section h5 { font-size: 1.1rem; font-weight: 500; border-bottom-style: dotted;}
+.section h6 { font-size: 1rem; font-weight: 500; border-bottom-style: dotted;}
+
+/* Sub-section styling */
+.subSection {
+  margin-left: 1.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  padding-left: 1.5rem;
+  border-left: 3px solid var(--app-primary-hover);
+  background-color: rgba(var(--app-primary-rgb), 0.03);
+  border-radius: 8px;
 }
-.section h4 {
-  margin-top: 16px;
-  margin-bottom: 8px;
-  font-size: 1.05em; /* Adjusted */
-  color: var(--text-heading);
-  font-weight: 600; /* Make H4 bolder */
+.subSectionsContainer {
+  margin-top: 1.5rem;
 }
 
 /* Text content within sections */
-.sectionText { /* Applied to the div with dangerouslySetInnerHTML */
+.sectionText {
   line-height: 1.75;
-  white-space: normal;  /* Key change for word wrapping */
-  overflow-wrap: break-word;
-  word-break: normal;
-  color: var(--text-default) !important;
+  color: var(--app-foreground);
   text-align: left;
-  width: 100%; /* Ensure it uses the full width of .section */
-  text-align: justify;  
-  hyphens: auto; 
+  hyphens: auto;
+  font-size: 1rem;
+  width: 100%;
+  max-width: none;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  box-sizing: border-box;
 }
-.sectionText p { /* Paragraphs generated by dangerouslySetInnerHTML */
-   margin-bottom: 1em;
-   line-height: inherit; /* Inherit from .sectionText */
+.sectionText p {
+   margin-bottom: 1.25em;
+   line-height: inherit;
    color: inherit;
+   text-align: justify;
+   width: 100%;
+   max-width: none;
 }
 .sectionText p:last-child {
    margin-bottom: 0;
@@ -248,525 +306,346 @@
 /* -------------------------------------------------- */
 .toc {
   width: 100%;
-  margin: 0 auto 32px auto;
-  padding: 20px;
-  background-color: var(--blue-light);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
-  border: 1px solid var(--gray-border);
-  border-left: 4px solid var(--blue-primary);
+  padding: 1.5rem;
+  background-color: var(--app-card-background);
+  box-shadow: var(--shadow-md);
+  border-radius: 12px;
+  border: 1px solid var(--app-border);
 }
 .toc summary {
-  color: var(--text-heading);
-  font-size: 1.2em;
+  color: var(--app-foreground);
+  font-size: 1.25rem;
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   cursor: pointer;
   outline: none;
   user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-.toc ul { margin: 0; padding-left: 20px; list-style-type: disc; }
-.toc li { margin-bottom: 0.6rem; }
-.toc li::marker { color: var(--blue-primary) !important; }
-.toc a {
-  color:  var(--blue-primary-dark) !important;
-  text-decoration: none;
-  transition: color 0.2s ease;
-  font-weight: 500;
-}
-.toc a:hover {
-  color: var(--blue-primary) !important;
-  text-decoration: underline;
-}
+.toc summary::after { content: '▼'; font-size: 0.8em; transition: transform 0.2s ease-out; }
+.toc[open] summary::after { transform: rotate(-180deg); }
+.toc ul { margin: 0; padding-left: 1.25rem; list-style-type: none; }
+.toc li { margin-bottom: 0.85rem; position: relative; padding-left: 1.75rem; line-height: 1.5; }
+.toc li::before { content: ''; position: absolute; left: 0.25rem; top: 0.6em; width: 7px; height: 7px; background-color: var(--app-primary); border-radius: 50%; }
+.toc a { color: var(--app-primary); text-decoration: none; transition: color 0.2s ease; font-weight: 500; font-size: 1.05rem; }
+.toc a:hover { color: var(--app-primary-hover); text-decoration: underline; }
 
 /* -------------------------------------------------- */
 /* Meta Information Section */
 /* -------------------------------------------------- */
-.metaSection { /* これは <section class="styles.section styles.metaSection"> に適用される想定 */
-  /* .section の基本スタイルは継承される */
-  /* ここには .metaSection 特有のスタイルがあれば記述 (例: 背景色を変えるなど) */
-}
+.metaSection p { margin-bottom: 0.75rem; line-height: 1.6; display: flex; flex-wrap: wrap; }
+.metaSection strong { color: var(--app-foreground); margin-right: 0.5em; font-weight: 600; flex-shrink: 0; }
+.metaSection span { color: var(--app-secondary); }
 
-.metaSection p { /* メタ情報セクション内の各 <p> タグ */
-  margin-bottom: 0.6rem;
-  line-height: 1.6;
-  /* ダークモードでない時の <p> タグ自体の色は、親の .section から継承されるか、
-     ここで var(--text-default) などを指定することも可能 */
-}
-
-.metaSection strong { /* メタ情報のラベル部分 (<strong>タイトル:</strong> など) */
-  color: var(--text-heading); /* ライトモード時の色 (globals.css の --text-heading を使用) */
-  margin-right: 0.5em;
-  font-weight: 600; /* 少し太字を強調 */
-}
-
-/* --- ダークモード時のスタイル --- */
-@media (prefers-color-scheme: dark) {
-  /* ... (他の既存のダークモードスタイル) ... */
-
-  .metaSection strong { /* メタ情報セクションの <strong> タグの色をダークモード用に上書き */
-    color: var(--foreground); /* globals.css のダークモード用前景変数 (--foreground は通常明るい色) */
-    /* または、より具体的な明るい色を直接指定: color: #e0e0e0; */
-  }
-
-  /* もし .metaSection 全体の文字色や背景色をダークモードで変えたい場合はここに追加 */
-  /* .metaSection {
-    background-color: #2a2a2a; 
-  }
-  .metaSection p {
-    color: #ccc;
-  } */
-  
-  /* .section h2 のダークモードスタイルは、おそらく既存のダークモード設定内の
-     .section h2 { color: var(--foreground) !important; } でカバーされているはずです。
-     もし .metaSection の h2 だけ特別に変えたい場合は、以下のように指定します。
-  .metaSection h2 {
-    color: var(--foreground) !important;
-  }
-  */
-}
 /* -------------------------------------------------- */
-/* Abstract Section */ 
+/* Abstract Section & Summary Text Styling */
 /* -------------------------------------------------- */
+.abstractContainer { display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--app-border); }
+.abstractOriginal h3, .abstractSummary h3 { margin-top: 0; margin-bottom: 0.75rem; font-size: 1.125rem; color: var(--app-foreground); font-weight: 600; }
 
-.abstractSection { /* これは <section class="styles.section styles.abstractSection"> に適用される想定 */
-  /* .section の基本スタイルは継承される */
-  /* ここには .abstractSection 特有のスタイルがあれば記述 (例: 背景色を変えるなど) */
+.abstractOriginal .sectionText,
+.abstractSummary .sectionText { /* アブストラクト(原文・AI要約)のテキスト */
+  line-height: 1.7;
+  color: var(--app-foreground);
+  width: 100%;
+  max-width: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: justify;
+  font-size: 0.95em;
+  box-sizing: border-box;
 }
-.abstractContainer {
-  display: flex;
-  flex-direction: column; /* デフォルトは縦並び、PCでは横並びも検討 */
-  gap: 20px;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid var(--gray-border);
-}
-
-.abstractOriginal,
-.abstractSummary {
-  flex: 1; /* 横並びの場合に均等に幅を取る */
-}
-
-.abstractOriginal h3,
-.abstractSummary h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  font-size: 1.1em;
-  color: var(--text-heading);
-}
-
-.abstractText p, /* page.js側で<p>タグを生成するのでセレクタ変更 */
-.summaryText p {  /* page.js側で<p>タグを生成するのでセレクタ変更 */
-  line-height: 1.75;
+.abstractOriginal .sectionText p,
+.abstractSummary .sectionText p {
+  color: inherit;
   margin-bottom: 1em;
+  text-align: inherit;
 }
-.abstractText p:last-child,
+.abstractOriginal .sectionText p:last-child,
+.abstractSummary .sectionText p:last-child {
+  margin-bottom: 0;
+}
+@media (min-width: 992px) { .abstractContainer { grid-template-columns: 1fr 1fr; } }
+
+/* ★★★ 要約ボタン、読み上げボタン、要約文カード部分のスタイルを元に戻す ★★★ */
+.summaryButton {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--app-primary-text);
+  background-color: var(--app-primary); /* ★ プライマリカラーに戻す */
+  border: none;
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+  align-self: flex-start;
+}
+.summaryButton:hover:enabled {
+  background-color: var(--app-primary-hover); /* ★ プライマリホバーに戻す */
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.summaryButton:active:enabled {
+  transform: translateY(0);
+  box-shadow: var(--shadow-xs);
+}
+.summaryButton:disabled {
+  background-color: var(--app-secondary); /* 無効時はセカンダリグレー */
+  opacity: 0.6;
+  color: rgba(255,255,255,0.7);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+@media (prefers-color-scheme: dark) {
+  .summaryButton { /* ダークモード時もプライマリ系 */
+    background-color: var(--app-primary);
+    color: var(--app-primary-text); /* ダークモードのプライマリテキスト色 */
+  }
+  .summaryButton:hover:enabled {
+    background-color: var(--app-primary-hover);
+  }
+  .summaryButton:disabled {
+    background-color: var(--app-secondary); /* ダークモードのセカンダリ */
+    color: var(--app-foreground); /* ダークモードの無効時文字色 */
+    opacity: 0.5;
+  }
+}
+
+.summaryText { /* セクションごとの要約テキストコンテナ */
+  margin-top: 0; /* actionGroupがgapを管理 */
+  padding: 1.25rem;
+  background-color: var(--app-info-bg); /* ★ 情報メッセージに近い背景色に戻す */
+  border: 1px solid var(--app-border);
+  border-left: 4px solid var(--app-primary); /* ★ 左のアクセントボーダーをプライマリに */
+  color: var(--app-foreground); /* 基本文字色 */
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+  border-radius: 8px;
+  font-size: 1em;
+  width: 100%;
+  max-width: none;
+  box-shadow: var(--shadow-xs);
+  text-align: left; /* 要約は左揃えに戻す */
+}
+.summaryText p {
+  color: inherit;
+  margin-bottom: 1em;
+  text-align: left; /* 段落も左揃え */
+  width: 100%;
+  max-width: none; /* 段落の最大幅を制限しない */
+}
 .summaryText p:last-child {
   margin-bottom: 0;
 }
 
-/* PCなど幅が広い画面では横並びにする例 */
-@media (min-width: 768px) {
-  .abstractContainer {
-    flex-direction: row;
-  }
-}
-
-/* ダークモード用 */
- @media (prefers-color-scheme: dark) {
-     .abstractContainer {
-         border-top-color: var(--gray-alpha-200);
-     }
-     .abstractOriginal h3,
-     .abstractSummary h3 {
-         color: var(--foreground);
-     }
- }
-
-/* -------------------------------------------------- */
-/* "Read More" Button & Citations */
-/* -------------------------------------------------- */
-.readMoreButton {
-  background: none;
-  border: 1px solid var(--blue-primary);
-  color: var(--blue-primary);
-  padding: 6px 12px;
-  font-weight: 600;
-  margin-top: 1rem;
+.ttsButtonSmall { /* 要約読み上げボタン */
+  padding: 0.6rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--app-primary-text);
+  background-color: var(--app-primary); /* ★ プライマリカラーに戻す */
+  border: none;
+  border-radius: 6px;
+  box-shadow: var(--shadow-xs);
   cursor: pointer;
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
-  border-radius: 4px;
+  transition: background-color 0.2s ease, transform 0.1s ease;
   align-self: flex-start;
 }
-.readMoreButton:hover {
-  color: white;
-  background-color: var(--blue-primary-dark);
-  border-color: var(--blue-primary-dark);
-  text-decoration: none;
+.ttsButtonSmall:hover:enabled {
+  background-color: var(--app-primary-hover); /* ★ プライマリホバーに戻す */
+  transform: translateY(-1px);
 }
+.ttsButtonSmall:disabled {
+  background-color: var(--app-secondary); /* 無効時はセカンダリグレー */
+  opacity: 0.6;
+  color: rgba(255,255,255,0.7);
+  cursor: not-allowed;
+}
+@media (prefers-color-scheme: dark) {
+  .ttsButtonSmall { /* ダークモード時もプライマリ系 */
+    background-color: var(--app-primary);
+    color: var(--app-primary-text);
+  }
+  .ttsButtonSmall:hover:enabled {
+    background-color: var(--app-primary-hover);
+  }
+  .ttsButtonSmall:disabled {
+    background-color: var(--app-secondary);
+    color: var(--app-foreground);
+    opacity: 0.5;
+  }
+  .summaryText { /* ダークモード時の要約背景 */
+    background-color: rgba(var(--app-primary-rgb), 0.1); /* プライマリの薄い色 */
+    border-left-color: var(--app-primary);
+  }
+}
+/* ★★★ ここまでが復元対象の主要なスタイル ★★★ */
 
 
-.section sup.citation {
-  font-size: 0.75em; vertical-align: super; line-height: 1; margin-left: 0.2em; margin-right: 0.2em; opacity: 1;
-}
-.section sup.citation a { color: var(--blue-primary) !important; text-decoration: none; font-weight: bold; }
-.section sup.citation a:hover { text-decoration: underline; }
+/* -------------------------------------------------- */
+/* "Read More" Button */
+/* -------------------------------------------------- */
+.readMoreButton { background-color: transparent; border: 1px solid var(--app-primary); color: var(--app-primary); padding: 0.5rem 1rem; font-weight: 600; margin-top: 1.25rem; cursor: pointer; transition: color 0.2s ease, background-color 0.2s ease; border-radius: 6px; align-self: flex-start; font-size: 0.9rem; }
+.readMoreButton:hover { color: var(--app-primary-text); background-color: var(--app-primary-hover); border-color: var(--app-primary-hover); text-decoration: none; }
 
 /* -------------------------------------------------- */
 /* Figures & Tables */
 /* -------------------------------------------------- */
-.extractedMediaSection { /* Add this class to <section> for Figures/Tables list */
-  /* .section styles apply */
-}
-
-/* For TEI-derived figures (usually just captions within sections) */
-.figureItemTei {
-  margin: 1rem 0; padding: 0.75rem; background-color: var(--gray-alpha-100);
-  border-left: 3px solid var(--gray-border); font-size: 0.9em; border-radius: 4px;
-}
-.figureItemTei figcaption { color: var(--text-default); }
-
-/* For PDF-extracted figures */
-.figuresGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px; margin-top: 1rem;
-}
-.figureItem {
-  border: 1px solid var(--gray-border); border-radius: 6px; padding: 12px;
-  text-align: center; background-color: var(--gray-alpha-50, var(--background));
-}
-.figureItem img {
-  max-width: 100%; height: auto; border-radius: 4px; margin-bottom: 8px;
-  border: 1px solid var(--gray-alpha-200);
-}
-.figureItem figcaption { font-size: 0.9rem; color: var(--text-default); margin-top: 4px; }
-
-/* For PDF-extracted tables */
-.tableContainer { margin: 1.5rem 0; }
-.tableScrollWrapper {
-  overflow-x: auto; padding-bottom: 8px;
-  border: 1px solid var(--gray-border); border-radius: 6px;
-}
-.tableScrollWrapper table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-.tableScrollWrapper th, .tableScrollWrapper td {
-  border: 1px solid var(--gray-border); padding: 8px 10px;
-  text-align: left; vertical-align: top;
-}
-.tableScrollWrapper th {
-  background-color: var(--gray-alpha-100); font-weight: bold; color: var(--text-heading);
-}
+.figureItemTeiContainer { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.figureItemTei { margin: 0; padding: 1rem; background-color: var(--app-background); border: 1px dashed var(--app-border); font-size: 0.95em; border-radius: 8px; }
+.figureItemTei figcaption { color: var(--app-secondary); }
+.figuresGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+.figureItem { border: 1px solid var(--app-border); border-radius: 8px; padding: 1rem; text-align: center; background-color: var(--app-background); box-shadow: var(--shadow-sm); transition: box-shadow 0.2s ease, transform 0.2s ease; }
+.figureItem:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+.figureItem img { max-width: 100%; height: auto; border-radius: 6px; margin-bottom: 0.75rem; border: 1px solid var(--app-border); }
+.figureItem figcaption { font-size: 0.9rem; color: var(--app-secondary); margin-top: 0.25rem; line-height: 1.5; }
+.tableContainer { margin: 2rem 0; }
+.tableScrollWrapper { overflow-x: auto; border: 1px solid var(--app-border); border-radius: 8px; box-shadow: var(--shadow-sm); }
+.tableScrollWrapper table { width: 100%; min-width: 600px; border-collapse: separate; border-spacing: 0; font-size: 0.95em; }
+.tableScrollWrapper th, .tableScrollWrapper td { border-bottom: 1px solid var(--app-border); padding: 0.85rem 1rem; text-align: left; vertical-align: top; }
+.tableScrollWrapper td { color: var(--app-secondary); }
+.tableScrollWrapper th { background-color: var(--app-background); font-weight: 600; color: var(--app-foreground); position: sticky; top: 0; z-index: 1; }
+.tableScrollWrapper tr:last-child td { border-bottom: none; }
+.tableScrollWrapper tr:hover td { background-color: rgba(var(--app-primary-rgb), 0.05); }
 
 /* -------------------------------------------------- */
 /* References Section */
 /* -------------------------------------------------- */
-.referencesSection { /* Add this class to <section> for References list */
- /* .section styles apply */
-}
-.referencesList {
-  list-style: none; counter-reset: ref; padding-left: 0; margin-top: 1rem;
-}
-.referencesList li {
-  counter-increment: ref; display: flex; align-items: flex-start;
-  margin-bottom: 0.85em; line-height: 1.65;
-}
-.referencesList li::before {
-  content: "[" counter(ref) "]"; min-width: 3ch; margin-right: 1em;
-  text-align: right; flex-shrink: 0; color: var(--blue-primary); font-weight: bold;
-  padding-top: 0.05em; 
-}
-.referencesList li a { color: var(--blue-primary-dark) !important; text-decoration: underline; }
-.referencesList li a:hover { color: var(--blue-primary) !important; }
-.referencesList li[id^="ref"] { scroll-margin-top: 4rem; }
+.referencesList { list-style: none; counter-reset: ref; padding-left: 0; margin-top: 1.5rem; }
+.referencesList li { counter-increment: ref; display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 1.25rem; line-height: 1.7; font-size: 0.95rem; padding-left: 3.5em; position: relative; }
+.referencesList li::before { content: "[" counter(ref) "]"; position: absolute; left: 0; top: 0.1em; width: 3em; text-align: right; padding-right: 0.5em; color: var(--app-primary); font-weight: 600; box-sizing: border-box; }
+.referencesList li .referenceTextContainer { display: block; margin-bottom: 0.35rem; }
+.referencesList li .referenceTextContainer a { color: var(--app-accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.referencesList li .referenceTextContainer a:hover { color: var(--app-accent-hover); text-decoration-thickness: 2px; }
+.referencesList li[id^="ref-"] { scroll-margin-top: 6rem; }
+.referenceSearchLinks { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.35rem; font-size: 0.875em; width: 100%; }
+.referenceSearchLinks a { color: var(--app-secondary); text-decoration: none; padding: 0.25rem 0.6rem; border: 1px solid var(--app-border); border-radius: 4px; transition: color 0.2s, border-color 0.2s, background-color 0.2s; white-space: nowrap; }
+.referenceSearchLinks a:hover { color: var(--app-primary); border-color: var(--app-primary); background-color: rgba(var(--app-primary-rgb), 0.1); text-decoration: none; }
 
-.referenceSearchLinks {
-  margin-top: 4px; /* 文献テキストとの間に少しスペース */
-  font-size: 0.85em;
-}
+/* -------------------------------------------------- */
+/* Action Buttons & Section Footer Actions */
+/* -------------------------------------------------- */
+.actionsContainer { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; align-items: flex-start; }
+.actionGroup { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; }
+/* .summaryButton スタイルは上で復元済み */
+/* .ttsButtonSmall スタイルは上で復元済み */
+.ttsContainer { margin-top: 0; display: flex; flex-direction: column; align-items: stretch; width: 100%; gap: 0.5rem; }
+.ttsContainer audio { width: 100%; height: 48px; border-radius: 6px; border: 1px solid var(--app-border); }
+.empty { font-size: 1rem; color: var(--app-secondary); font-style: italic; margin-top: 1rem; text-align: center; padding: 2rem; background-color: var(--app-background); border-radius: 8px; border: 1px dashed var(--app-border); width: 100%; }
 
-.referenceSearchLinks a {
-  color: var(--blue-primary-dark);
-  text-decoration: underline;
-  margin-right: 8px; /* リンク間のスペース */
+.sectionFooterActions {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--app-border);
+  display: flex;
+  justify-content: flex-end;
 }
-
-.referenceSearchLinks a:hover {
-  color: var(--blue-primary);
+.actionLinkButton {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  background-color: var(--app-foreground); /* 黒系 */
+  color: var(--app-background); /* 明るい文字 */
+  border: 1px solid var(--app-foreground);
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+  cursor: pointer;
+}
+.actionLinkButton:hover {
+  background-color: #333333; /* 少し明るいダークグレー */
+  border-color: #333333;
+  color: var(--app-background);
+  transform: translateY(-1px);
   text-decoration: none;
 }
 
-/* ダークモード用のスタイルも必要であれば追加 */
- @media (prefers-color-scheme: dark) {
-     .referenceSearchLinks a {
-         color: var(--blue-light);
-     }
-     .referenceSearchLinks a:hover {
-         color: #cceeff;
-     }
- }
 
 /* -------------------------------------------------- */
-/* Action Buttons (Summary, TTS) & Related Elements */
+/* Notion Save Section */
 /* -------------------------------------------------- */
-.actionsContainer {
-  margin-top: 1.5rem; display: flex; flex-direction: column;
-  gap: 16px; align-items: flex-start;
-}
-.summaryButton, .ttsButton {
-  margin-top: 0; padding: 0.7rem 1.1rem; /* Adjusted padding */ font-size: 0.95rem;
-  font-weight: 600; color: #ffffff; background-color: var(--blue-primary);
-  border: none; border-radius: 6px; box-shadow: 0 2px 4px var(--shadow-color);
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.1s ease;
-}
-.summaryButton:hover:enabled, .ttsButton:hover:enabled {
-  background-color: var(--blue-primary-dark); transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(var(--gray-rgb), 0.15);
-}
-.summaryButton:active:enabled, .ttsButton:active:enabled {
-  transform: translateY(0); box-shadow: 0 1px 3px var(--shadow-color);
-}
-.summaryButton:disabled, .ttsButton:disabled {
-  opacity: 0.5; cursor: default; background-color: var(--gray-light);
-  color: #999; transform: none; box-shadow: none;
-}
-
-.summaryText {
-  margin-top: 10px; padding: 14px; background-color: var(--blue-light);
-  border-left: 4px solid var(--blue-primary); color: var(--text-default);
-  line-height: 1.65; white-space: pre-wrap; word-break: break-word;
-  overflow: auto; border-radius: 4px; font-size: 0.95em;
-}
-
-.ttsContainer {
-  margin-top: 0; display: flex; flex-direction: column;
-  align-items: flex-start; width: 100%;
-}
-.ttsContainer audio { margin-top: 10px; width: 100%; height: 40px; }
-
-.empty { /* For "No sections found" type messages */
-  font-size: 1rem; color: #777; font-style: italic; margin-top: 16px;
-  text-align: center; padding: 24px; background-color: var(--gray-alpha-100);
-  border-radius: 6px; border: 1px dashed var(--gray-border);
-}
+.notionSaveSection { margin-top: 2rem; }
+.notionSaveContainer { display: flex; flex-direction: column; gap: 1.5rem; padding-top: 1rem; }
+.inputRow { display: flex; flex-direction: row; gap: 1.5rem; width: 100%; }
+.inputRow > div { flex: 1; min-width: 0; }
+.tagInputContainer, .ratingInputContainer, .memoInputContainer { display: flex; flex-direction: column; gap: 0.5rem; }
+.tagInputContainer label, .ratingInputContainer label, .memoInputContainer label { font-weight: 500; color: var(--app-foreground); font-size: 0.95rem; margin-bottom: 0.25rem; }
+.tagInputField, .memoTextarea { padding: 0.6rem 0.8rem; border: 1px solid var(--app-border); border-radius: 6px; background-color: var(--app-background); font-size: 0.95rem; color: var(--app-foreground); font-family: inherit; line-height: 1.5; }
+.memoTextarea { resize: vertical; min-height: 80px; }
+.tagInputField:focus-visible, .memoTextarea:focus-visible { border-color: var(--app-primary); box-shadow: 0 0 0 2px rgba(var(--app-primary-rgb), 0.2); outline: none; }
+.tagsPreview { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+.tagItem { background-color: var(--app-secondary); color: var(--app-background); padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem; }
+.removeTagButton { background: none; border: none; color: var(--app-background); opacity: 0.7; cursor: pointer; padding: 0; margin-left: 0.25rem; font-size: 1.1em; line-height: 1; }
+.removeTagButton:hover { opacity: 1; }
+.ratingOptions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.ratingLabel { display: inline-flex; align-items: center; justify-content: center; gap: 0.2rem; padding: 0.4rem 0.8rem; border: 1px solid var(--app-border); border-radius: 6px; cursor: pointer; transition: background-color 0.2s, border-color 0.2s, color 0.2s; font-size: 1rem; min-width: 40px; text-align: center; color: var(--app-secondary); background-color: transparent; }
+.ratingLabel:hover { border-color: var(--app-secondary-hover); background-color: rgba(var(--app-secondary-rgb, 113, 128, 150), 0.1); }
+.ratingLabel.selectedRating { background-color: var(--app-foreground); color: var(--app-background); border-color: var(--app-foreground); font-weight: bold; }
+.ratingRadioInput { opacity: 0; position: absolute; width: 0; height: 0; }
+.clearRatingButton { background: none; border: 1px solid var(--app-border); color: var(--app-secondary); padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 4px; cursor: pointer; margin-left: 0.5rem; transition: color 0.2s, border-color 0.2s; }
+.clearRatingButton:hover { border-color: var(--app-error); color: var(--app-error); }
+.notionSaveButton { padding: 0.8rem 1.5rem; font-size: 1rem; font-weight: 600; color: var(--app-background); background-color: var(--app-foreground); border: 1px solid var(--app-foreground); border-radius: 8px; box-shadow: var(--shadow-sm); cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease; align-self: flex-start; margin-top: 1rem; }
+.notionSaveButton:hover:enabled { background-color: var(--app-secondary); border-color: var(--app-secondary); color: var(--app-background); transform: translateY(-1px); }
+.notionSaveButton:disabled { background-color: var(--app-border); color: var(--app-secondary); opacity: 0.7; cursor: not-allowed; border-color: transparent; }
+.notionSuccess { color: var(--app-foreground); font-weight: 500; text-align: left; margin-top: 0.5rem; }
+.notionSuccess a { color: var(--app-primary); text-decoration: underline; font-weight: bold; }
+.notionSuccess a:hover { color: var(--app-primary-hover); }
 
 /* -------------------------------------------------- */
-/* Floating Back Button */
+/* Floating Back Button, Helpers, Footer, Dark Mode, Responsive */
 /* -------------------------------------------------- */
-.backButton {
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  width: 52px; 
-  height: 52px; 
-  background-color: var(--blue-primary);
-  color: #ffffff;
-  border: none;
-  border-radius: 50%;
-  box-shadow: 0 4px 12px var(--shadow-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.1s ease;
-  z-index: 1000;
-  font-size: .7rem; /* ★ 1.6rem から 1.2rem に変更 (例) */
-}
-.backButton:hover {
-  background-color: var(--blue-primary-dark);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px var(--shadow-color);
-}
-.backButton:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 6px var(--shadow-color);
-}
+.backButton { position: fixed; bottom: 2rem; right: 2rem; width: 56px; height: 56px; background-color: var(--app-primary); color: var(--app-primary-text); border: none; border-radius: 50%; box-shadow: var(--shadow-lg); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease; z-index: 1000; font-size: 1rem; }
+.backButton:hover { background-color: var(--app-primary-hover); transform: translateY(-3px) scale(1.05); box-shadow: var(--shadow-xl); }
+.backButton:active { transform: translateY(-1px) scale(0.98); box-shadow: var(--shadow-md); }
+.codeBlock { font-family: var(--font-mono); background: var(--app-background); padding: 1rem; border-radius: 8px; border: 1px solid var(--app-border); color: var(--app-foreground); display: block; white-space: pre-wrap; word-break: break-all; margin: 1.5em 0; font-size: 0.9em; box-shadow: var(--shadow-sm); }
+.ctas { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2.5rem; justify-content: center; }
+.ctas a { display: inline-flex; align-items: center; justify-content: center; padding: 0.75rem 1.5rem; border-radius: 8px; font-size: 1rem; font-weight: 600; text-decoration: none; border: 1px solid transparent; transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.1s, box-shadow 0.2s; cursor: pointer; box-shadow: var(--shadow-sm); }
+.ctas a:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.ctas a:active { transform: translateY(0); box-shadow: var(--shadow-xs); }
+a.primary { background-color: var(--app-primary); color: var(--app-primary-text); }
+a.primary:hover { background-color: var(--app-primary-hover); }
+a.secondary { background-color: transparent; border-color: var(--app-primary); color: var(--app-primary); }
+a.secondary:hover { background-color: rgba(var(--app-primary-rgb), 0.1); border-color: var(--app-primary-hover); color: var(--app-primary-hover); }
+.footer { display: flex; flex-wrap: wrap; gap: 1.5rem; padding: 2.5rem 1rem; border-top: 1px solid var(--app-border); width: 100%; max-width: 1200px; justify-content: center; align-items: center; margin-top: 3rem; font-size: 0.9rem; }
+.footer a { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--app-secondary); text-decoration: none; }
+.footer a:hover { color: var(--app-primary); text-decoration: underline; }
+.footer img.logo { height: 24px; width: auto; opacity: 0.8; transition: opacity 0.2s; }
+.footer a:hover img.logo { opacity: 1; }
+@media (prefers-color-scheme: dark) { .footer img.logo { filter: invert(1) brightness(1.5) contrast(0.9); } }
 
-/* ... (モバイル用の .backButton スタイルも必要に応じて調整) ... */
-@media (max-width: 600px) {
-  /* ... (他のモバイル用スタイル) ... */
-  .backButton {
-    width: 44px; 
-    height: 44px; 
-    font-size: 1.1rem; /* ★ モバイル用も調整 (例) */
-    bottom: 1rem;
-    right: 1rem;
-  }
-}
-
-
-/* -------------------------------------------------- */
-/* General Helper Styles (Scoped if needed) */
-/* -------------------------------------------------- */
-/* Example for code blocks if you use <pre><code> */
-.codeBlock {
-  font-family: var(--font-geist-mono, monospace);
-  background: var(--gray-alpha-100);
-  padding: 8px 12px; /* Increased padding */
-  border-radius: 4px;
-  color: var(--blue-primary-dark);
-  display: block; /* For block-level code snippets */
-  white-space: pre-wrap;
-  word-break: break-all;
-  margin: 1em 0; /* Add some margin */
-}
-
-/* -------------------------------------------------- */
-/* Footer & CTAs */
-/* -------------------------------------------------- */
-.ctas {
-  display: flex; gap: 16px; margin-top: 2rem; justify-content: center;
-}
-.ctas a {
-  appearance: none; border-radius: 30px; height: 48px; padding: 0 24px;
-  border: 1px solid transparent;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
-  cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
-  font-size: 1rem; line-height: 1.25; font-weight: 500; text-decoration: none;
-}
-a.primary { background: var(--blue-primary); color: white; gap: 8px; }
-a.primary:hover { background: var(--blue-primary-dark); }
-a.secondary { border-color: var(--blue-primary); color: var(--blue-primary); }
-a.secondary:hover { background: var(--blue-light); border-color: var(--blue-primary); }
-
-.footer {
-  grid-row-start: 3; display: flex; gap: 24px; padding: 32px 0;
-  border-top: 1px solid var(--gray-border); width: 100%;
-  justify-content: center; align-items: center; margin-top: 32px;
-}
-.footer a {
-  display: flex; align-items: center; gap: 8px;
-  color: var(--text-default); text-decoration: none; font-size: 0.9rem;
-}
-.footer a:hover { text-decoration: underline; color: var(--blue-primary); }
-.footer img { flex-shrink: 0; height: 20px; width: auto; }
-
-/* -------------------------------------------------- */
-/* Dark Mode Overrides */
-/* -------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
-  .page {
-    background-color: #181818;
-    --gray-rgb: 255, 255, 255;
-    --gray-alpha-200: rgba(var(--gray-rgb), 0.2);
-    --gray-alpha-100: rgba(var(--gray-rgb), 0.1);
-    --gray-alpha-50: rgba(var(--gray-rgb), 0.05);
-    --button-primary-hover: #ddd;
-    --button-secondary-hover: #444;
-  }
-  .main > h1 { color: var(--foreground); } /* Specific to main page title */
-  .main > .description { color: #ccc; }
+  .form input[type="file"]::file-selector-button { background-color: var(--app-primary); color: var(--app-primary-text); }
+  .form input[type="file"]::file-selector-button:hover { background-color: var(--app-primary-hover); }
+  .tableScrollWrapper th { background-color: var(--app-card-background); }
 
-  .header {
-    background-color: rgba(var(--gray-rgb), 0.08) !important;
-    box-shadow: rgba(0,0,0,0.3) 0px 4px 12px;
+  .actionLinkButton { /* ダークモード時のNotion登録箇所へのリンクボタン */
+    background-color: var(--app-card-background);
+    color: var(--app-foreground);
+    border-color: var(--app-foreground);
   }
-  .header h1 { color: var(--foreground) !important; }
-  .header p { color: #ddd !important; }
-
-  .form {
-    background-color: #2a2a2a;
-    border-color: var(--gray-alpha-200);
-    box-shadow: rgba(0,0,0,0.2) 0px 2px 8px;
-  }
-  .form input[type="file"] { border-color: var(--gray-alpha-200); color: var(--foreground); }
-  .form input[type="file"]::file-selector-button { background-color: var(--blue-primary-dark); color: #eee; }
-  .form input[type="file"]::file-selector-button:hover { background-color: #0a3158; }
-  .form button:disabled { background-color: #333; color: #777; }
-
-  .statusMessage {
-    background-color: rgba(var(--blue-light), 0.1);
-    color: var(--blue-light);
-    border-left-color: var(--blue-light);
-  }
-  .error {
-    background-color: rgba(255, 200, 200, 0.1);
-    color: #ffacac;
-    border-color: #f56565;
+  .actionLinkButton:hover {
+    background-color: var(--app-border);
   }
 
-  .section {
-    background-color: #2a2a2a !important;
-    border-color: var(--gray-alpha-200);
-    box-shadow: rgba(0,0,0,0.25) 0px 4px 16px;
+  .notionSaveButton { background-color: var(--app-card-background); color: var(--app-foreground); border: 1px solid var(--app-foreground); } /* ダークモードのNotion保存ボタン */
+  .notionSaveButton:hover:enabled { background-color: var(--app-border); }
+  .notionSaveButton:disabled { background-color: var(--app-border); color: var(--app-secondary); }
+
+  .ratingLabel.selectedRating { /* ダークモード時の選択された星 */
+    background-color: var(--app-foreground);
+    color: var(--app-background);
+    border-color: var(--app-foreground);
   }
-  .section h2 { color: var(--foreground) !important; border-bottom-color: var(--gray-alpha-200); }
-  .section h3, .section h4 { color: var(--foreground); }
-  .section p, .sectionText, .sectionText div, .sectionText span { color: #ccc !important; }
-  .section sup.citation a { color: var(--blue-light) !important; }
-
-  .readMoreButton { color: var(--blue-light); border-color: var(--blue-light); }
-  .readMoreButton:hover { color: #121212; background-color: var(--blue-light); }
-  
-  .figureItemTei { background-color: var(--gray-alpha-100); border-left-color: var(--gray-alpha-200); }
-  .figureItemTei figcaption { color: #bbb; }
-
-  .figureItem { border-color: var(--gray-alpha-200); background-color: var(--gray-alpha-100); }
-  .figureItem img { border-color: var(--gray-alpha-100); }
-  .figureItem figcaption { color: #bbb; }
-
-  .tableScrollWrapper { border-color: var(--gray-alpha-200); }
-  .tableScrollWrapper th { background-color: var(--gray-alpha-200); color: var(--foreground); }
-  .tableScrollWrapper th, .tableScrollWrapper td { border-color: var(--gray-alpha-100); }
-
-  .summaryButton, .ttsButton { background-color: var(--blue-primary-dark); }
-  .summaryButton:hover:enabled, .ttsButton:hover:enabled { background-color: #0a3158; }
-  .summaryButton:disabled, .ttsButton:disabled { background-color: #333; color: #777; }
-
-  .summaryText { background-color: #333; border-left-color: var(--blue-primary); color: #ddd; }
-  .empty { color: #888; background-color: var(--gray-alpha-100); border-color: var(--gray-alpha-200); }
-
-  .toc {
-    background-color: #2a2a2a !important; border-left-color: var(--blue-primary-dark);
-    border-color: var(--gray-alpha-200);
-  }
-  .toc summary { color: var(--foreground); }
-  .toc li::marker { color: var(--blue-light) !important; }
-  .toc a { color: var(--blue-light) !important; }
-  .toc a:hover { color: #cceeff !important; }
-
-  .referencesList li::before { color: var(--blue-light); }
-  .referencesList li a { color: var(--blue-light) !important; }
-  .referencesList li a:hover { color: #cceeff !important; }
-
-  .logo { filter: invert(0.9) hue-rotate(180deg) contrast(0.8); }
-  .backButton { background-color: var(--blue-primary-dark); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
-  .backButton:hover { background-color: #0a3158; box-shadow: 0 6px 16px rgba(0,0,0,0.5); }
-  
-  .codeBlock { background: var(--gray-alpha-200); color: var(--blue-light); }
-  .footer { border-top-color: var(--gray-alpha-200); }
-  .footer a { color: #bbb; }
-  .footer a:hover { color: var(--blue-light); }
+  .tagInputField, .memoTextarea { background-color: var(--app-card-background); }
 }
 
-/* -------------------------------------------------- */
-/* Responsive Overrides (Larger screens first, then smaller) */
-/* -------------------------------------------------- */
-@media (min-width: 1200px) {
-  .page { padding: 48px; gap: 48px; }
-  .main { max-width: 1200px; }
-}
-
-@media (max-width: 768px) { /* Tablet */
-  .page { padding: 20px; gap: 24px; }
-  .main > h1, .header h1 { font-size: 1.8rem; }
-  .main > .description, .header p { font-size: 0.95rem; }
-  .main { max-width: 100%; padding: 0 10px; }
-  .section { padding: 16px; }
-  .section h2 { font-size: 1.3em; }
-}
-
-@media (max-width: 600px) { /* Mobile */
-  .page { padding: 16px; padding-bottom: 80px; }
-  .main { gap: 20px; }
-  .main > h1, .header h1 { font-size: 1.6rem; }
-  .form button, .summaryButton, .ttsButton, .readMoreButton { font-size: 0.9rem; padding: 10px 14px; }
-  .section { padding: 12px; }
-  .section h2 { font-size: 1.2em; }
-  .sectionText, .sectionText p { line-height: 1.65; font-size: 0.95rem; }
-  .ctas { flex-direction: column; }
-  .ctas a { font-size: 14px; height: 40px; padding: 0 16px; }
-  a.secondary { min-width: auto; }
-  .footer { flex-wrap: wrap; justify-content: center; gap: 12px; padding-top: 20px; }
-  .backButton { width: 44px; height: 44px; font-size: 1.3rem; bottom: 1rem; right: 1rem; }
-}
+@media (max-width: 1280px) { }
+@media (max-width: 768px) { .page { padding: 1.5rem clamp(0.75rem, 3vw, 1.5rem); } .main { padding-left: 0.75rem; padding-right: 0.75rem; } .header { padding: 1.5rem; } .header h1 { font-size: clamp(1.5rem, 5vw, 2rem); } .header p { font-size: clamp(0.85rem, 2.5vw, 1rem); } .ctas { flex-direction: column; align-items: stretch; } .ctas a { width: 100%; } }
+@media (max-width: 600px) { .page { padding: 1rem clamp(0.5rem, 2.5vw, 1rem); padding-bottom: 6rem; } .main { gap: 1.5rem; padding-left: 0.5rem; padding-right: 0.5rem;} .section { padding: 1rem; } .section h2 { font-size: 1.25rem; margin-bottom: 1rem; padding-bottom: 0.5rem; } .section h3 { font-size: 1.1rem; } .section h4 { font-size: 1rem; } .sectionText { font-size: 0.95rem; } .form { padding: 1.25rem; } .form button, .summaryButton, .ttsButtonSmall, .readMoreButton { font-size: 0.9rem; padding: 0.75rem 1.25rem; } .backButton { width: 48px; height: 48px; font-size: 1.1rem; bottom: 1.5rem; right: 1.5rem; } .footer { padding: 2rem 1rem; text-align: center; } .footer a { justify-content: center; } }

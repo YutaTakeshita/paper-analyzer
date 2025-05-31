@@ -18,11 +18,10 @@ Pillow      # pdfplumber で画像を扱う場合に必要
 # HTTP クライアント
 requests
 
-# CERMINE から出力される XML を扱うために
-# （tei2json.py 内で使っている lxml と組み合わせて使えます）
-
 # 認証系・クラウド連携
+httpx
 openai
+notion-client
 boto3
 google-cloud-storage>=2.0.0
 google-cloud-firestore>=2.0.0

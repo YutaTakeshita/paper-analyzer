@@ -5,7 +5,7 @@ const nextConfig = {
     NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL
   },
   // static export mode
-  output: 'export',
+  // output: 'export',
 };
 
 export default nextConfig;

@@ -1,113 +1,250 @@
 /* globals.css */
-:root {
-  --blue-primary: #608ebf;
-  --blue-primary-dark: #0f4782;
-  --blue-light: #e7f3ff;
-  --gray-light: #f5f5f5;
-  --gray-border: #e0e0e0;
-  --text-default: #333333;
-  --text-heading: #222222;
-  --shadow-color: rgba(0, 0, 0, 0.1);
-}
-
-/* Import Noto Sans JP font from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
-
-/* Apply Noto Sans JP font globally */
-html, body {
-  font-family: 'Noto Sans JP', 'Times New Roman', serif;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --header-bg: rgba(163, 213, 255, 0.499);
+  /* Font Stack */
+  --font-sans: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-mono: 'ui-monospace', 'SFMono-Regular', Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Light Theme Colors */
+  --background-light: #f7f9fc; /* Slightly off-white, very light gray */
+  --foreground-light: #1a202c; /* Dark gray for text */
+  --card-background-light: #ffffff;
+  --border-light: #e2e8f0; /* Light gray for borders */
+
+  --primary-light: #4A90E2; /* A modern, friendly blue */
+  --primary-hover-light: #357ABD;
+  --primary-text-light: #ffffff;
+
+  --secondary-light: #718096; /* Medium gray for secondary text/elements */
+  --secondary-hover-light: #4A5568;
+
+  --accent-light: #5A67D8; /* Example accent - purple/indigo */
+  --accent-hover-light: #4C51BF;
+
+  --success-light: #48BB78;
+  --warning-light: #ECC94B;
+  --error-light: #E53E3E;
+  --info-light: #4299E1;
+
+  --success-bg-light: #F0FFF4;
+  --warning-bg-light: #FFFBEB;
+  --error-bg-light: #FFF5F5;
+  --info-bg-light: #EBF8FF;
+
+  --shadow-xs-light: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  --shadow-sm-light: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-md-light: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg-light: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+  --shadow-xl-light: 0 20px 25px -5px rgba(0, 0, 0, 0.07), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+
+  /* Dark Theme Colors */
+  --background-dark: #121212; /* Very dark gray, almost black */
+  --foreground-dark: #e2e8f0; /* Light gray for text */
+  --card-background-dark: #1a202c; /* Darker card background */
+  --border-dark: #2d3748; /* Dark gray for borders */
+
+  --primary-dark: #63b3ed; /* Lighter blue for dark mode */
+  --primary-hover-dark: #90cdf4;
+  --primary-text-dark: #1a202c; /* Dark text on light primary button */
+
+  --secondary-dark: #a0aec0; /* Lighter gray for secondary text */
+  --secondary-hover-dark: #cbd5e0;
+
+  --accent-dark: #7f9cf5; /* Lighter accent for dark mode */
+  --accent-hover-dark: #a3bffa;
+
+  --success-dark: #68D391;
+  --warning-dark: #F6E05E;
+  --error-dark: #FC8181;
+  --info-dark: #63B3ED;
+
+  --success-bg-dark: rgba(72, 187, 120, 0.15);
+  --warning-bg-dark: rgba(236, 201, 75, 0.15);
+  --error-bg-dark: rgba(229, 62, 62, 0.15);
+  --info-bg-dark: rgba(66, 153, 225, 0.15);
+
+  --shadow-xs-dark: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow-sm-dark: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --shadow-md-dark: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.25);
+  --shadow-lg-dark: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  --shadow-xl-dark: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.15);
+
+  /* Default to Light Theme */
+  --app-background: var(--background-light);
+  --app-foreground: var(--foreground-light);
+  --app-card-background: var(--card-background-light);
+  --app-border: var(--border-light);
+  --app-primary: var(--primary-light);
+  --app-primary-hover: var(--primary-hover-light);
+  --app-primary-text: var(--primary-text-light);
+  --app-secondary: var(--secondary-light);
+  --app-secondary-hover: var(--secondary-hover-light);
+  --app-accent: var(--accent-light);
+  --app-accent-hover: var(--accent-hover-light);
+  --app-secondary-rgb: 113, 128, 150; /* 例: #718096 のRGB値 */
+
+  --app-success: var(--success-light);
+  --app-warning: var(--warning-light);
+  --app-error: var(--error-light);
+  --app-info: var(--info-light);
+
+  --app-success-bg: var(--success-bg-light);
+  --app-warning-bg: var(--warning-bg-light);
+  --app-error-bg: var(--error-bg-light);
+  --app-info-bg: var(--info-bg-light);
+
+  --shadow-xs: var(--shadow-xs-light);
+  --shadow-sm: var(--shadow-sm-light);
+  --shadow-md: var(--shadow-md-light);
+  --shadow-lg: var(--shadow-lg-light);
+  --shadow-xl: var(--shadow-xl-light);
+
+  --header-bg: rgba(231, 243, 255, 0.6); /* Light mode header bg with some transparency */
+  --header-title: var(--foreground-light);
+  --header-text: var(--secondary-light);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --header-bg: rgba(32, 32, 32, 0.85);
+    color-scheme: dark;
+    --app-background: var(--background-dark);
+    --app-foreground: var(--foreground-dark);
+    --app-card-background: var(--card-background-dark);
+    --app-border: var(--border-dark);
+    --app-primary: var(--primary-dark);
+    --app-primary-hover: var(--primary-hover-dark);
+    --app-primary-text: var(--primary-text-dark);
+    --app-secondary: var(--secondary-dark);
+    --app-secondary-hover: var(--secondary-hover-dark);
+    --app-accent: var(--accent-dark);
+    --app-accent-hover: var(--accent-hover-dark);
+    --app-secondary-rgb: 160, 174, 192; /* 例: #a0aec0 のRGB値 */
+
+    --app-success: var(--success-dark);
+    --app-warning: var(--warning-dark);
+    --app-error: var(--error-dark);
+    --app-info: var(--info-dark);
+
+    --app-success-bg: var(--success-bg-dark);
+    --app-warning-bg: var(--warning-bg-dark);
+    --app-error-bg: var(--error-bg-dark);
+    --app-info-bg: var(--info-bg-dark);
+
+    --shadow-xs: var(--shadow-xs-dark);
+    --shadow-sm: var(--shadow-sm-dark);
+    --shadow-md: var(--shadow-md-dark);
+    --shadow-lg: var(--shadow-lg-dark);
+    --shadow-xl: var(--shadow-xl-dark);
+
+    --header-bg: rgba(26, 32, 44, 0.75); /* Dark mode header bg with some transparency */
+    --header-title: var(--foreground-dark);
+    --header-text: var(--secondary-dark);
   }
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
+/* Global Styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+html {
+  font-size: 100%; /* Base font size (usually 16px) */
+  scroll-behavior: smooth;
+  scroll-padding-block-start: 5rem; /* Adjust if you have a fixed header */
+  -webkit-text-size-adjust: 100%; /* Prevent font scaling in landscape on iOS */
+}
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.65;
+  color: var(--app-foreground);
+  background-color: var(--app-background);
+  min-height: 100vh;
+  text-rendering: optimizeSpeed;
+}
+
+/* Remove default list styles */
+ul, ol {
+  list-style: none;
+}
+
+/* Accessible focus outline */
+:focus-visible {
+  outline: 2px solid var(--app-primary);
+  outline-offset: 2px;
+  border-radius: 2px; /* Optional: match your element's border-radius */
+}
+
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
 }
 
 a {
-  color: inherit;
+  color: var(--app-primary);
   text-decoration: none;
+  transition: color 0.2s ease-in-out;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+a:hover {
+  color: var(--app-primary-hover);
+  text-decoration: underline;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--app-foreground); /* Or a specific heading color variable */
+  margin-bottom: 0.75em; /* Consistent bottom margin for headings */
+}
+h1 { font-size: 2.5rem; }   /* ~40px */
+h2 { font-size: 2rem; }     /* ~32px */
+h3 { font-size: 1.75rem; }  /* ~28px */
+h4 { font-size: 1.5rem; }   /* ~24px */
+h5 { font-size: 1.25rem; }  /* ~20px */
+h6 { font-size: 1rem; }     /* ~16px */
+
+
+p {
+  margin-bottom: 1rem;
+  max-width: 75ch; /* Improve readability for long text blocks */
 }
 
 /* Citation number styling */
 sup.citation {
-  font-size: 0.75em;
+  font-size: 0.8em; /* Slightly larger for better readability */
   vertical-align: super;
-  line-height: 1; /* Ensure line height doesn't expand too much */
-  margin-left: 0.2em;
-  margin-right: 0.2em;
-  color: var(--blue-primary); /* ライトモード時の基本色 (リンク色に合わせる) */
-  opacity: 1; /* 透明度は不要なら1 */
-  font-weight: normal; /* 通常の太さ */
+  line-height: 1;
+  margin: 0 0.1em; /* Reduced margin */
+  font-weight: 500; /* Medium weight */
+  color: var(--app-accent); /* Use accent color */
 }
 
 sup.citation a {
-  color: inherit !important; /* 親要素(sup)の色を継承 */
+  color: inherit !important;
   text-decoration: none;
-  font-weight: bold; /* 引用番号のリンクは太字に */
+  font-weight: inherit; /* Inherit from sup */
+  padding: 0.1em 0.2em; /* Add a little padding for easier clicking */
+  border-radius: 3px;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 sup.citation a:hover {
-  text-decoration: underline;
-  color: var(--blue-primary-dark) !important; /* ホバー時の色 */
+  background-color: var(--app-accent);
+  color: var(--app-background) !important; /* Contrast color on hover */
+  text-decoration: none;
 }
 
-/* ダークモード時の上書き */
-@media (prefers-color-scheme: dark) {
-  /* ... (他のダークモードスタイル) ... */
-
-  sup.citation {
-    color: var(--blue-light) !important; /* ダークモード時の明るい色 */
-  }
-
-  sup.citation a:hover {
-    color: #add8e6 !important; /* ダークモード時のホバー色 (例: より明るい青) */
-  }
-}
-
-/* Global smooth scrolling and anchor offset */
-html {
-  scroll-behavior: smooth;
-  scroll-padding-block-start: 2rem; /* adjust to match header height */
-}
-
-
-/* Ensure smooth scrolling and header offset */
-html {
+/* Ensure smooth scrolling and header offset - already in html block */
+/* html {
   scroll-behavior: smooth;
   scroll-padding-block-start: 2rem;
-}
-
+} */
