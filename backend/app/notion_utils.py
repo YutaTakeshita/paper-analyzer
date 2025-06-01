@@ -32,14 +32,12 @@ def _get_notion_secret(secret_id_in_sm: str, project_id: str = GCP_PROJECT_ID_NO
         logger.warning(f"Failed to access secret '{secret_id_in_sm}' from Secret Manager (project: {project_id}): {e}")
         return None
 
-# Secret Managerでのシークレット名 (ユーザーが設定した名前に合わせる)
 NOTION_API_KEY_SECRET_NAME = os.getenv("NOTION_API_KEY_SECRET_NAME", "NOTION_API_KEY")
 NOTION_DATABASE_ID_SECRET_NAME = os.getenv("NOTION_DATABASE_ID_SECRET_NAME", "NOTION_DATABASE_ID")
 
 NOTION_API_KEY = _get_notion_secret(NOTION_API_KEY_SECRET_NAME)
 NOTION_DATABASE_ID = _get_notion_secret(NOTION_DATABASE_ID_SECRET_NAME)
 
-# Secret Managerから取得できなかった場合のフォールバック (環境変数)
 if NOTION_API_KEY is None:
     NOTION_API_KEY = os.getenv("NOTION_API_KEY")
     if NOTION_API_KEY:
@@ -63,18 +61,19 @@ def create_notion_page(
     title: str,
     authors: Optional[List[str]] = None,
     journal: Optional[str] = None,
-    published_date: Optional[str] = None, # YYYY-MM-DD
+    published_date: Optional[str] = None, 
     doi: Optional[str] = None,
-    pdf_filename: Optional[str] = None,
+    pdf_filename: Optional[str] = None, # 元のファイル名、ログやフォールバック用に残すのは良い
+    pdf_google_drive_url: Optional[str] = None, 
     short_abstract: Optional[str] = None,
     tags: Optional[List[str]] = None,
     rating: Optional[str] = None,
-    memo: Optional[str] = None # メモ引数を追加
+    memo: Optional[str] = None
 ) -> Dict:
-    # ★★★ デバッグログ追加: 関数呼び出し時の引数確認 ★★★
     logger.debug(
         f"create_notion_page called with: title='{title}', authors={authors}, journal='{journal}', "
         f"published_date='{published_date}', doi='{doi}', pdf_filename='{pdf_filename}', "
+        f"pdf_google_drive_url='{pdf_google_drive_url}', "
         f"short_abstract_len={len(short_abstract) if short_abstract else 0}, tags={tags}, rating='{rating}', memo_len={len(memo) if memo else 0}"
     )
 
@@ -85,72 +84,88 @@ def create_notion_page(
     parent_db = {"database_id": NOTION_DATABASE_ID}
     page_properties = {}
 
-    # --- Notionデータベースの実際のプロパティ名に合わせてキーを正確に設定してください ---
-    # 例: Notion側でプロパティ名が「論文タイトル」なら、キーも "論文タイトル" にする
-
-    # Title (必須プロパティ, Notionでは通常 "Name" または "Title")
-    # ご自身のNotionデータベースのタイトル列のプロパティ名を確認してください。
-    # ここでは "Title" と仮定しますが、多くの場合 "Name" です。
-    page_properties["タイトル"] = { # または "Name" など、実際のプロパティ名
+    page_properties["タイトル"] = {
         "title": [{"text": {"content": title if title else "Untitled Paper"}}]
     }
 
     if authors:
-        # Notionの "Authors" プロパティがText型の場合
-        page_properties["著者"] = { # 実際のプロパティ名に修正 (例: "著者")
+        page_properties["著者"] = {
             "rich_text": [{"text": {"content": ", ".join(authors)}}]
         }
-        # Notionの "Authors" プロパティがMulti-select型の場合
-        # page_properties["Authors"] = {
-        #     "multi_select": [{"name": author.strip()} for author in authors if author.strip()]
-        # }
     
     if journal:
-        page_properties["雑誌名"] = { # 実際のプロパティ名に修正 (例: "雑誌名")
+        page_properties["雑誌名"] = {
             "rich_text": [{"text": {"content": journal}}]
         }
 
-    if published_date: # YYYY-MM-DD 形式を期待
+    if published_date:
         try:
-            datetime.strptime(published_date, '%Y-%m-%d') # 簡単な形式チェック
-            page_properties["発行日"] = { # 実際のプロパティ名に修正 (例: "発行日")
+            datetime.strptime(published_date, '%Y-%m-%d')
+            page_properties["発行日"] = {
                 "date": {"start": published_date}
             }
         except ValueError:
             logger.warning(f"Invalid date format for published_date: '{published_date}'. Must be YYYY-MM-DD. Skipping date property.")
 
     if doi:
-        page_properties["doi"] = { # 実際のプロパティ名に修正
+        page_properties["doi"] = {
             "rich_text": [{"text": {"content": doi}}]
         }
 
-    if pdf_filename:
-        page_properties["PDF"] = { # 実際のプロパティ名に修正 (例: "PDFファイル名")
-            "rich_text": [{"text": {"content": pdf_filename}}]
+    # ★★★ 「PDF」プロパティの処理を修正 ★★★
+    # Notionデータベースの "PDF" プロパティが「URL」タイプであることを強く推奨します。
+    # そのプロパティ名を "PDF" と仮定しています。実際のプロパティ名に合わせてください。
+    if pdf_google_drive_url:
+        page_properties["PDF"] = {  # Notionデータベースの実際の「PDF」プロパティ名（URLタイプ）
+            "url": pdf_google_drive_url
         }
+    elif pdf_filename: 
+        # Google Drive URLがない場合のフォールバックとしてファイル名を「PDF」(URLタイプ)プロパティに入れることはできません。
+        # もし「PDF」プロパティが「リッチテキスト」タイプで、ファイル名をどうしても入れたい場合は、
+        # 下のコメントアウトを解除し、Notion側のプロパティタイプと合わせてください。
+        # ただし、その場合、URLは単なるテキストとして表示されます。
+        # page_properties["PDF"] = {
+        #     "rich_text": [{"text": {"content": pdf_filename}}]
+        # }
+        logger.info(f"Google Drive URL is not available for '{title}'. 'PDF' property will be empty or not set if it's a URL type.")
+    # ★★★ ここまで ★★★
+
+    # 以前の "PDFリンク (Drive)" プロパティの設定は削除 (またはコメントアウト)
+    # if pdf_google_drive_url:
+    #     page_properties["PDFリンク (Drive)"] = { # これはもう不要
+    #         "url": pdf_google_drive_url
+    #     }
 
     if short_abstract:
         summary_to_save = short_abstract[:1997] + '...' if len(short_abstract) > 2000 else short_abstract
-        page_properties["簡易アブスト"] = { # 実際のプロパティ名に修正 (例: "短縮概要")
+        page_properties["簡易アブスト"] = {
             "rich_text": [{"text": {"content": summary_to_save}}]
         }
 
     if tags:
-        page_properties["タグ"] = { # 実際のプロパティ名に修正 (Multi-select型を想定)
+        page_properties["タグ"] = {
             "multi_select": [{"name": tag.strip()} for tag in tags if tag.strip()]
         }
     
     if rating:
-        page_properties["Rating"] = { # 実際のプロパティ名に修正 (Select型を想定)
+        page_properties["Rating"] = {
             "select": {"name": rating}
         }
     
-    if memo: # メモが空文字列の場合も送信する（Notion側で空として扱われる）
-        page_properties["メモ"] = { # 実際のプロパティ名に修正 (例: "メモ")
+    if memo:
+        page_properties["メモ"] = {
             "rich_text": [{"text": {"content": memo}}]
         }
+    
+    current_date_iso = datetime.now().strftime('%Y-%m-%d')
+    # Notionデータベースで "登録日" という名前の「日付」タイプのプロパティを想定
+    # 実際のプロパティ名に合わせて変更してください。
+    page_properties["登録日"] = {
+        "date": {
+            "start": current_date_iso
+        }
+    }
 
-    # ★★★ デバッグログ追加: Notionに送信するプロパティ全体を確認 ★★★
     logger.debug(f"Constructed properties for Notion API: {json.dumps(page_properties, indent=2, ensure_ascii=False)}")
 
     try:
@@ -159,13 +174,11 @@ def create_notion_page(
         logger.info(f"Successfully created Notion page. Page ID: {created_page.get('id')}, URL: {created_page.get('url')}")
         return {"success": True, "page_id": created_page.get("id"), "url": created_page.get("url")}
     except Exception as e:
-        # ★★★ デバッグログ追加: Notion API呼び出し時のエラー詳細 ★★★
-        logger.error(f"Failed to create Notion page (EXCEPTION): {e}", exc_info=True) # exc_info=True でスタックトレース
+        logger.error(f"Failed to create Notion page (EXCEPTION): {e}", exc_info=True)
         error_detail = str(e)
         error_body_str = ""
-        if hasattr(e, 'body'): # notion_client.APIResponseError の場合
+        if hasattr(e, 'body'):
             try:
-                # e.body が既に文字列の場合と、bytesの場合がある
                 if isinstance(e.body, bytes):
                     error_body_str = e.body.decode('utf-8', 'ignore')
                 else:
@@ -181,4 +194,3 @@ def create_notion_page(
                 logger.error(f"Unexpected error parsing Notion API error body: {parse_e}")
                 error_detail = error_body_str if error_body_str else str(e)
         return {"error": f"Failed to create Notion page: {error_detail}"}
-

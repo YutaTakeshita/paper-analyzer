@@ -1,7 +1,20 @@
-.venv/
+# Python
 __pycache__/
-sample_tei.xml
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtualenv
+.venv/
+venv/
+ENV/
+
+# Environment variables
 .env
-.venv/
-__pycache__/
-sample_tei.xml
+
+# Credentials - backendディレクトリからの相対パス
+credentials/
+
+# Test files or samples (if any, specific to backend)
+# sample_tei.xml # (もしこれがbackendディレクトリ内にあり、無視したい場合)

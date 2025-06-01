@@ -219,6 +219,26 @@
   margin-bottom: 0;
 }
 
+/* -------------------------------------------------- */
+/* Info Messages */
+/* -------------------------------------------------- */
+
+.infoMessage {
+  color: #31708f;
+  background-color: #d9edf7;
+  border: 1px solid #bce8f1;
+  padding: 10px;
+  margin-top: 15px;
+  margin-bottom: 15px; /* 下にもマージンを追加 */
+  border-radius: 4px;
+  text-align: center;
+  /* ★★★ 以下を追加 ★★★ */
+  display: block; /* ブロックレベル要素として扱う */
+  margin-left: auto; /* 左右のマージンをautoにして中央揃え */
+  margin-right: auto;
+  max-width: 80%; /* 必要に応じて最大幅を設定 */
+}
+
 
 /* -------------------------------------------------- */
 /* Results Area (Container for TOC, Sections, etc.) */
@@ -565,6 +585,29 @@
   color: var(--app-background);
   transform: translateY(-1px);
   text-decoration: none;
+}
+
+/* referencesの戻るボタン */
+.sectionHeaderWithButton {
+  display: flex;
+  justify-content: space-between; /* タイトルとボタンを両端に配置 */
+  align-items: center; /* 垂直方向中央揃え */
+  margin-bottom: 1rem; /* 必要に応じて調整 */
+}
+
+.scrollToTopButton {
+  background-color: var(--app-background);
+  color: #333;
+  border: 1px solid #ccc;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s;
+}
+
+.scrollToTopButton:hover {
+  background-color: #e0e0e0;
 }
 
 
