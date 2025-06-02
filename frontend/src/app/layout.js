@@ -1,31 +1,53 @@
-// src/app/layout.js (または該当するレイアウトファイル)
+// frontend/src/app/layout.js
 import "./globals.css";
 
+// ★★★ VercelデプロイURLを直接使用するか、環境変数経由で設定 ★★★
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://paper-analyzer-smoky.vercel.app/"; // デプロイURLを設定
+
 export const metadata = {
-  // ★★★ metadataBase を追加 ★★★
-  // 本番環境のURLを設定してください。
-  // ローカル開発中は http://localhost:3000 のままでも警告は出ますが、
-  // 本番デプロイ前に必ず実際のドメインに置き換えてください。
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
-  title: "PapeLog", // 現在のアプリケーション名
-  description: "PDF論文をアップロードするだけ！AIがパッと解析して、論文の構造をまるごとキャッチ...", // 現在の説明文
-  openGraph: { // OGP設定の例
-    title: "PapeLog",
-    description: "PDF論文の解析・管理をスマートに。",
-    // images: '/default-og-image.png', // publicフォルダに配置したデフォルトOGP画像
-    // 例: images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'PapeLog' }]
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "PapeLog | PDF論文スマート解析・管理",
+    template: "%s | PapeLog", 
   },
-  twitter: { // Twitterカード設定の例
+  description: "PapeLogは、PDF論文をアップロードするだけでAIが構造を解析し、Google Driveに整理・保存。要約やNotion連携で研究効率を劇的に向上させます。",
+  
+  openGraph: {
+    title: "PapeLog | PDF論文の解析・管理を、もっとスマートに。",
+    description: "AIがあなたの論文読解と情報整理を強力サポート。Google DriveとNotion連携で知識をストック。",
+    url: siteUrl, // ★ アプリケーションのURL
+    siteName: "PapeLog",
+    images: [
+      {
+        url: '/og-image.png', // public/og-image.png を配置した場合
+        width: 1200,
+        height: 630,
+        alt: 'PapeLog - PDF論文スマート解析・管理',
+      },
+    ],
+    locale: 'ja_JP',
+    type: 'website',
+  },
+
+  twitter: {
     card: 'summary_large_image',
-    title: "PapeLog",
-    description: "PDF論文の解析・管理をスマートに。",
-    // images: ['/twitter-card-image.png'], // publicフォルダに配置したTwitterカード用画像
-  },  icons: {
-    icon: '/favicon.ico', // 通常のfavicon
-    apple: '/apple-icon.png', // Appleデバイス用 (例: public/apple-icon.png に置く場合)
-                            // または app/apple-icon.png に置けば Next.jsが自動で処理
-    // 他のサイズやタイプも指定可能
+    title: "PapeLog: PDF論文の解析・管理をAIで効率化",
+    description: "論文の構造解析、Google Drive保存、AI要約、Notion連携。PapeLogで研究をもっとスムーズに。",
+    images: ['/twitter-card-image.png'], // public/twitter-card-image.png を配置した場合
   },
+
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any', type: 'image/x-icon' }, // app/favicon.ico
+      { url: '/icon.png', type: 'image/png', sizes: '32x32' },     // app/icon.png (32x32)
+    ],
+    apple: [
+      { url: '/apple-icon.png', type: 'image/png' }, // app/apple-icon.png (180x180推奨)
+    ],
+    shortcut: ['/shortcut-icon.png'],
+  },
+  
+  manifest: '/manifest.json', // app/manifest.json
 };
 
 export default function RootLayout({ children }) {
