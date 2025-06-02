@@ -1,56 +1,33 @@
-# ────────────────────
-# OS / エディタ 一般
-# ────────────────────
-# macOS
+# OS生成ファイル
 .DS_Store
-# Windows
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# VSCode / IntelliJ
+# IDE/エディタ設定ファイル
 .vscode/
 .idea/
-*.iml
+*.suo
+*.user
+*.sln.docstates
+*.code-workspace
 
-# ────────────────────
-# ビルド生成物
-# ────────────────────
-# Java
-target/
-build/
-dist/
-*.jar
-*.class
-
-# ログ・一時ファイル
-logs/
+# ログファイル
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ローカル環境変数ファイル (もしルートに置く場合)
+# .env
+# .env.local
+# .env.*.local
+
+# その他の一時ファイルなど
+.AppleDouble
+.LSOverride
 *.tmp
-
-# Python / シェル キャッシュ
-__pycache__/
-*.py[cod]
-
-# ────────────────────
-# GROBID関連
-# ────────────────────
-# 必要なモデルや設定はコミットする → 以下をコメントアウトまたは削除
-# grobid-home/models/
-# grobid-home/scripts/
-
-# 一時ディレクトリは無視
-grobid-home/tmp/
-
-# ────────────────────
-# その他大容量 / 機密ファイル
-# ────────────────────
-.env
-*.key
-*.pem
-
-grobid-service/*.jar
-grobid-service/build/node_modules/
-node_modules
-
-# Python 仮想環境 <--- ここから追記
-.venv/
-venv/
+*.bak
+*.swp
+*~

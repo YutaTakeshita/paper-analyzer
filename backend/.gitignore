@@ -1,20 +1,37 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-
-# Virtualenv
+# Python 仮想環境
 .venv/
 venv/
+myenv/
 ENV/
 
-# Environment variables
+# Python バイトコードとキャッシュ
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 環境変数ファイル
 .env
+.env.*
 
-# Credentials - backendディレクトリからの相対パス
+# 機密情報 (例: サービスアカウントキーファイル)
+# credentials/ ディレクトリ全体を無視する場合
 credentials/
+# または特定のファイル名を指定する場合 (例)
+# credentials/service_account_key.json
 
-# Test files or samples (if any, specific to backend)
-# sample_tei.xml # (もしこれがbackendディレクトリ内にあり、無視したい場合)
+# ローカルデータベースファイル (テスト用など)
+*.sqlite3
+*.db
+
+# pytest キャッシュ
+.pytest_cache/
+.coverage
+*.coverage
+
+# ドキュメント生成ツールなど
+# site/
+# build/
+# dist/
+
+# その他バックエンド固有の一時ファイル
+# *.tmp

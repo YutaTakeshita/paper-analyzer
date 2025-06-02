@@ -1,46 +1,34 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Node.js 依存関係
+node_modules/
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# Next.js ビルドキャッシュと出力
+.next/
+out/
 
-# testing
-/coverage
+# ローカル環境変数ファイル
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# ログファイル
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+lerna-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# IDE/エディタ設定ファイル (もしルートでカバーされていなければ)
+# .vscode/
+# .idea/
 
-# vercel
-.vercel
+# ビルド成果物 (Next.js以外の場合)
+# build/
+# dist/
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-node_modules/
-.next/
-out/
-.env.local
-npm-debug.log*
+# その他フロントエンド固有の一時ファイル
+.DS_Store
+Thumbs.db
+
+# テストレポート
+coverage/
+.nyc_output/
