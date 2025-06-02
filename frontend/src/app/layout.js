@@ -42,7 +42,7 @@ export const metadata = {
       { url: '/icon.png', type: 'image/png', sizes: '32x32' },     // app/icon.png (32x32)
     ],
     apple: [
-      { url: '/apple-icon.png', type: 'image/png' }, // app/apple-icon.png (180x180推奨)
+      { url: '/apple-icon.png', type: 'image/png', sizes: "180x180" }, // app/apple-icon.png (180x180推奨)
     ],
     shortcut: ['/shortcut-icon.png'],
   },
