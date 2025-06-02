@@ -20,6 +20,11 @@ export const metadata = {
     title: "PapeLog",
     description: "PDF論文の解析・管理をスマートに。",
     // images: ['/twitter-card-image.png'], // publicフォルダに配置したTwitterカード用画像
+  },  icons: {
+    icon: '/favicon.ico', // 通常のfavicon
+    apple: '/apple-icon.png', // Appleデバイス用 (例: public/apple-icon.png に置く場合)
+                            // または app/apple-icon.png に置けば Next.jsが自動で処理
+    // 他のサイズやタイプも指定可能
   },
 };
 

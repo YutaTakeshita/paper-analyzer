@@ -5,9 +5,9 @@ import shutil
 import logging
 import tempfile
 import io
-# import requests # 既存の同期/api/parseを残す場合に必要になる可能性
-import httpx # 非同期HTTPリクエスト用
-import openai # OpenAIライブラリ
+# import requests
+import httpx
+import openai
 import boto3
 import urllib3
 from fastapi import FastAPI, HTTPException, File, UploadFile, Response, status, BackgroundTasks
@@ -41,24 +41,23 @@ from app.text_utils import sanitize_filename
 # ─── 環境変数・クライアント初期化 ──────────────────────────────────────
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 load_env = __import__("dotenv").load_dotenv
-load_env() # .env ファイルを読み込む
+load_env()
 
 app = FastAPI(title="Paper Analyzer API with GROBID and Async Processing")
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("uvicorn.error") # FastAPIのデフォルトロガーと合わせる
+logger = logging.getLogger("uvicorn.error")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # 本番環境では適切なオリジンを指定してください
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-GCP_PROJECT_ID = os.getenv("GCP_PROJECT", "grobid-461112") # デフォルトプロジェクトID
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT", "grobid-461112")
 
 def get_secret(secret_id, project_id=GCP_PROJECT_ID, version_id="latest"):
-    """GCP Secret Managerからシークレットを取得する"""
     try:
         client = secretmanager.SecretManagerServiceClient()
         name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
@@ -68,33 +67,25 @@ def get_secret(secret_id, project_id=GCP_PROJECT_ID, version_id="latest"):
         logger.error(f"シークレット {secret_id} (プロジェクト: {project_id}) の取得に失敗しました: {e}")
         return None
 
-# --- OpenAI クライアント初期化 ---
 OPENAI_API_KEY_SECRET_NAME = os.getenv("OPENAI_API_KEY_SECRET_NAME", "openai-api-key")
 OPENAI_API_KEY = get_secret(OPENAI_API_KEY_SECRET_NAME)
 if not OPENAI_API_KEY:
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") # 環境変数からのフォールバック
-    if OPENAI_API_KEY:
-        logger.warning("OpenAI APIキーを環境変数からフォールバックとして設定しました。")
-    else:
-        logger.error("OpenAI APIキーが設定できませんでした。")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    if OPENAI_API_KEY: logger.warning("OpenAI APIキーを環境変数からフォールバックとして設定しました。")
+    else: logger.error("OpenAI APIキーが設定できませんでした。")
 
 sync_openai_client = None
 openai_aclient = None
 if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY # 古いライブラリ向けの設定も念のため
+    openai.api_key = OPENAI_API_KEY
     sync_openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
     openai_aclient = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
     logger.info("OpenAIクライアント (同期・非同期) を設定しました。")
 else:
     logger.error("OpenAI APIキーが利用できないため、クライアントは初期化されませんでした。")
-
-# ★★★ OpenAIモデル名をより一般的で利用可能なものに設定 (例: gpt-4o-mini, gpt-4o, gpt-3.5-turbo) ★★★
-# .envファイルで OPENAI_SUMMARY_MODEL="gpt-4o-mini" のように設定することを推奨
 OPENAI_SUMMARY_MODEL = os.getenv("OPENAI_SUMMARY_MODEL", "gpt-4.1-mini")
 logger.info(f"OpenAI要約モデルとして '{OPENAI_SUMMARY_MODEL}' を使用します。")
 
-
-# --- AWS Polly クライアント初期化 ---
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 AWS_POLLY_VOICE_ID_JA = os.getenv("AWS_POLLY_VOICE_ID_JA", "Tomoko")
 AWS_POLLY_OUTPUT_FORMAT = os.getenv("AWS_POLLY_OUTPUT_FORMAT", "mp3")
@@ -102,13 +93,10 @@ AWS_POLLY_ENGINE = os.getenv("AWS_POLLY_ENGINE", "neural")
 polly = None
 AWS_ACCESS_KEY_ID_SECRET_NAME = os.getenv("AWS_ACCESS_KEY_ID_SECRET_NAME", "aws-access-key-id")
 AWS_SECRET_ACCESS_KEY_SECRET_NAME = os.getenv("AWS_SECRET_ACCESS_KEY_SECRET_NAME", "aws-secret-access-key")
-
 aws_access_key_id_val = get_secret(AWS_ACCESS_KEY_ID_SECRET_NAME)
 aws_secret_access_key_val = get_secret(AWS_SECRET_ACCESS_KEY_SECRET_NAME)
-
-if not aws_access_key_id_val: aws_access_key_id_val = os.getenv("AWS_ACCESS_KEY_ID") # 環境変数フォールバック
-if not aws_secret_access_key_val: aws_secret_access_key_val = os.getenv("AWS_SECRET_ACCESS_KEY") # 環境変数フォールバック
-
+if not aws_access_key_id_val: aws_access_key_id_val = os.getenv("AWS_ACCESS_KEY_ID")
+if not aws_secret_access_key_val: aws_secret_access_key_val = os.getenv("AWS_SECRET_ACCESS_KEY")
 if aws_access_key_id_val and aws_secret_access_key_val:
     try:
         polly = boto3.client(
@@ -122,22 +110,17 @@ if aws_access_key_id_val and aws_secret_access_key_val:
 else:
     logger.warning("AWS Pollyの認証情報が見つからないため、クライアントは初期化されませんでした。")
 
-# --- GROBID 設定 ---
 GROBID_SERVICE_URL = os.getenv("GROBID_SERVICE_URL", "http://localhost:8070/api/processFulltextDocument")
 logger.info(f"GROBIDサービスURLとして '{GROBID_SERVICE_URL}' を使用します。")
 
-# --- Google Drive クライアント初期化 (Secret Manager経由) ---
 GDRIVE_SA_KEY_JSON_SECRET_NAME = os.getenv("GDRIVE_SA_KEY_JSON_SECRET_NAME", "gdrive-sa-key-json")
 GDRIVE_FOLDER_ID_SECRET_NAME = os.getenv("GDRIVE_FOLDER_ID_SECRET_NAME", "gdrive-folder-id")
-
 gdrive_sa_key_json_content_str = None
 GDRIVE_FOLDER_ID_FROM_SECRET = None
 gdrive_service = None
-
 try:
     gdrive_sa_key_json_content_str = get_secret(GDRIVE_SA_KEY_JSON_SECRET_NAME)
     GDRIVE_FOLDER_ID_FROM_SECRET = get_secret(GDRIVE_FOLDER_ID_SECRET_NAME)
-
     if gdrive_sa_key_json_content_str:
         gdrive_service = get_gdrive_service_from_json_key(gdrive_sa_key_json_content_str)
         if gdrive_service:
@@ -146,34 +129,39 @@ try:
             logger.error("Secret Managerからのキーを使用してGoogle Driveサービスの初期化に失敗しました。")
     else:
         logger.error(f"Google Drive用のサービスアカウントキーJSONがSecret Managerに見つかりません (シークレット名: {GDRIVE_SA_KEY_JSON_SECRET_NAME})。")
-    
     if not GDRIVE_FOLDER_ID_FROM_SECRET:
         logger.error(f"Google DriveフォルダIDがSecret Managerに見つかりません (シークレット名: {GDRIVE_FOLDER_ID_SECRET_NAME})。Google Driveへのアップロードは失敗する可能性があります。")
     else:
         logger.info(f"Google Driveアップロード先フォルダID: {GDRIVE_FOLDER_ID_FROM_SECRET}")
-
 except Exception as e:
     logger.error(f"Google Driveシークレットの取得またはサービスの初期化中にエラーが発生しました: {e}", exc_info=True)
 
-
-# --- 非同期処理のためのインメモリジョブストア (本番ではRedisやDBを検討) ---
 processing_jobs: Dict[str, Dict[str, Any]] = {}
 
-# ─── ヘルスチェック ───────────────────────────────────
+# ★★★ 詳細な進捗メッセージの定義を修正・調整 ★★★
+PROGRESS_MESSAGES = {
+    "queued": "解析キューに追加されました。順番をお待ちください...",
+    "contacting_grobid": "GROBIDサービスと通信し、解析処理を待機中です (サーバーの初回起動時は時間がかかる場合があります)...", # ★ GROBID応答待ち用
+    "data_extraction_formatting": "GROBIDによる解析結果を処理し、データ（本文、メタ情報、図、表など）を抽出・整形中です...",
+    "gdrive_uploading": "Google DriveへPDFを保存中です...",
+    "summarizing_abstract_long": "アブストラクトの要約を生成中です...",
+    "processing_complete": "最終処理を行い、結果をまとめています...",
+    "error_occurred": "エラーが発生しました。詳細を確認しています...",
+}
+
+def update_job_status_detail(job_id: str, status_key: str, custom_message: Optional[str] = None):
+    if job_id in processing_jobs:
+        message = custom_message if custom_message else PROGRESS_MESSAGES.get(status_key, "処理中です...")
+        processing_jobs[job_id].update({"status_detail": message, "timestamp": datetime.utcnow().isoformat()})
+        logger.info(f"[ジョブ {job_id}] 詳細ステータス更新: {message}")
+
 @app.get("/health", summary="ヘルスチェックエンドポイント")
-async def health():
-    return {"status": "ok"}
-
+async def health(): return {"status": "ok"}
 @app.get("/isalive", summary="生存確認エンドポイント (エイリアス)")
-async def isalive():
-    return {"status": "alive"}
-
+async def isalive(): return {"status": "alive"}
 @app.get("/api/isalive", summary="API生存確認エンドポイント (テキスト応答)")
-async def api_isalive():
-    return Response(content="true", media_type="text/plain")
+async def api_isalive(): return Response(content="true", media_type="text/plain")
 
-
-# ─── バックグラウンドPDF処理関数 ─────────────────────────────
 async def process_pdf_in_background(
     job_id: str,
     temp_pdf_path: str,
@@ -182,48 +170,57 @@ async def process_pdf_in_background(
     temp_dir_to_clean: str
 ):
     logger.info(f"[ジョブ {job_id}] バックグラウンド処理を開始しました: {original_filename}")
-    processing_jobs[job_id].update({"status": "processing", "timestamp": datetime.utcnow().isoformat()})
-    json_output: Dict[str, Any] = {} # 型ヒントを明確に
+    # ★★★ 初期詳細ステータスを "contacting_grobid" に設定 ★★★
+    processing_jobs[job_id].update({"status": "processing", "status_detail": PROGRESS_MESSAGES.get("contacting_grobid"), "timestamp": datetime.utcnow().isoformat()})
+    
+    json_output: Dict[str, Any] = {}
     google_drive_url: Optional[str] = None
-    global gdrive_service, GDRIVE_FOLDER_ID_FROM_SECRET # グローバル変数を参照
+    global gdrive_service, GDRIVE_FOLDER_ID_FROM_SECRET
 
     try:
-        # 1. GROBIDによるTEI XML取得
         tei_xml_string: Optional[str] = None
-        async with httpx.AsyncClient(timeout=300.0) as client: # タイムアウトを5分に設定
+        async with httpx.AsyncClient(timeout=300.0) as client:
             with open(temp_pdf_path, 'rb') as f_pdf:
                 files_for_grobid = {'input': (original_filename, f_pdf, content_type)}
-                logger.info(f"[ジョブ {job_id}] PDFをGROBIDに送信中: {GROBID_SERVICE_URL}")
+                
+                logger.info(f"[ジョブ {job_id}] PDFをGROBIDに送信し、応答待機中: {GROBID_SERVICE_URL}")
+                # この時点でフロントエンドには "contacting_grobid" のメッセージが表示されている
+
                 try:
                     start_time_grobid = time.time()
-                    grobid_response = await client.post(GROBID_SERVICE_URL, files=files_for_grobid)
-                    grobid_response.raise_for_status() # HTTPエラーがあれば例外を発生
+                    grobid_response = await client.post(GROBID_SERVICE_URL, files=files_for_grobid) # ここでGROBIDの処理を待つ
+                    grobid_response.raise_for_status()
                     tei_xml_string = grobid_response.text
                     end_time_grobid = time.time()
                     logger.info(f"[ジョブ {job_id}] GROBIDからTEI XMLを受信しました。処理時間: {end_time_grobid - start_time_grobid:.2f}秒")
+
                 except httpx.HTTPStatusError as e:
-                    error_detail = e.response.text[:500] if e.response else str(e) # エラーレスポンスが長過ぎる場合を考慮
+                    error_detail = e.response.text[:500] if e.response else str(e)
                     logger.error(f"[ジョブ {job_id}] GROBIDサービスエラー ({e.response.status_code if e.response else 'N/A'}): {error_detail}", exc_info=True)
+                    update_job_status_detail(job_id, "error_occurred", custom_message=f"GROBIDサービスエラー: {error_detail}")
                     raise Exception(f"GROBIDサービスエラー ({e.response.status_code if e.response else 'N/A'}): {error_detail}")
                 except httpx.RequestError as e:
                     logger.error(f"[ジョブ {job_id}] GROBIDリクエストエラー: {str(e)}", exc_info=True)
+                    update_job_status_detail(job_id, "error_occurred", custom_message=f"GROBIDリクエストエラー: {str(e)}")
                     raise Exception(f"GROBIDリクエストエラー: {str(e)}")
 
         if not tei_xml_string:
             logger.error(f"[ジョブ {job_id}] GROBIDからTEI XMLを受信できませんでした。")
+            update_job_status_detail(job_id, "error_occurred", custom_message="GROBIDからTEI XMLを受信できませんでした。")
             raise Exception("GROBIDからTEI XMLを受信できませんでした。")
 
-        # 2. TEI XMLからJSONへの変換 (図表抽出も含む)
-        logger.info(f"[ジョブ {job_id}] TEI XMLをJSONに変換中 (同期処理): {original_filename}")
+        # ★★★ GROBID完了後、次のデータ抽出・整形フェーズのメッセージに更新 ★★★
+        update_job_status_detail(job_id, "data_extraction_formatting")
+        logger.info(f"[ジョブ {job_id}] TEI XMLをJSONに変換中 (図表抽出含む): {original_filename}")
         start_time_conversion = time.time()
         json_output = convert_xml_to_json(
             tei_xml_string,
-            pdf_path=temp_pdf_path # 図表抽出のために元のPDFパスを渡す
+            pdf_path=temp_pdf_path
         )
         end_time_conversion = time.time()
         logger.info(f"[ジョブ {job_id}] TEI XMLからJSONへの変換が完了しました。処理時間: {end_time_conversion - start_time_conversion:.2f}秒")
 
-        # 3. Google Driveへのアップロード
+        update_job_status_detail(job_id, "gdrive_uploading")
         extracted_title = json_output.get('meta', {}).get('title', None)
         fallback_drive_filename_base = os.path.splitext(original_filename)[0] if original_filename else "untitled_document"
         drive_filename = sanitize_filename(extracted_title, fallback_name=fallback_drive_filename_base)
@@ -232,7 +229,7 @@ async def process_pdf_in_background(
         if gdrive_service and GDRIVE_FOLDER_ID_FROM_SECRET:
             logger.info(f"[ジョブ {job_id}] Google Driveへアップロード中: {temp_pdf_path} を {drive_filename} として")
             start_time_gdrive = time.time()
-            uploaded_file_info = await run_in_threadpool( # 同期関数を非同期で実行
+            uploaded_file_info = await run_in_threadpool(
                 upload_file_to_drive,
                 service=gdrive_service,
                 local_file_path=temp_pdf_path,
@@ -243,39 +240,33 @@ async def process_pdf_in_background(
             end_time_gdrive = time.time()
             if uploaded_file_info and uploaded_file_info.get('webViewLink'):
                 google_drive_url = uploaded_file_info.get('webViewLink')
-                json_output['google_drive_url'] = google_drive_url # 解析結果にURLを追加
+                json_output['google_drive_url'] = google_drive_url
                 logger.info(f"[ジョブ {job_id}] Google Driveへのアップロードに成功しました。URL: {google_drive_url}。処理時間: {end_time_gdrive - start_time_gdrive:.2f}秒")
             else:
                 logger.error(f"[ジョブ {job_id}] Google DriveへのアップロードまたはURL取得に失敗しました。処理時間: {end_time_gdrive - start_time_gdrive:.2f}秒")
-                json_output['google_drive_url'] = None # 失敗したことを示す
+                json_output['google_drive_url'] = None
         else:
-            if not gdrive_service:
-                logger.error(f"[ジョブ {job_id}] Google Driveサービスが初期化されていません。アップロードをスキップします。")
-            if not GDRIVE_FOLDER_ID_FROM_SECRET:
-                logger.error(f"[ジョブ {job_id}] Google DriveフォルダIDが設定されていません (Secret Managerより)。アップロードをスキップします。")
+            if not gdrive_service: logger.error(f"[ジョブ {job_id}] Google Driveサービスが初期化されていません。アップロードをスキップします。")
+            if not GDRIVE_FOLDER_ID_FROM_SECRET: logger.error(f"[ジョブ {job_id}] Google DriveフォルダIDが設定されていません。アップロードをスキップします。")
             json_output['google_drive_url'] = None
-
-        # 4. OpenAIによるアブストラクト要約 (長いバージョン)
+        
+        update_job_status_detail(job_id, "summarizing_abstract_long")
         if json_output.get('meta') and json_output['meta'].get('abstract') and openai_aclient:
             abstract_text = json_output['meta']['abstract']
-            if abstract_text and abstract_text.strip(): # アブストラクトが空でないことを確認
+            if abstract_text and abstract_text.strip():
                 try:
                     start_time_openai_long_abs = time.time()
                     system_prompt_for_abstract = """あなたは医療保健分野の学術論文を専門とする高度なAIアシスタントです。提供された学術論文のアブストラクト（抄録）を読み、その内容を起承転結をつけて日本語の自然な文章としてまとめてください。また、当該分野での現在の潮流や背景文脈を考慮し、必要であればそれを簡潔に補足情報として含めてください。"""
                     user_prompt_for_abstract = f"""以下のアブストラクトを上記の指示に従って、HTMLタグを一切含まず、段落間は空行で区切るプレーンテキスト形式で要約してください。\n\n---アブストラクトここから---\n{abstract_text}\n---アブストラクトここまで---\n\n要約（日本語、HTMLタグなし、段落間は空行）:"""
                     
                     logger.info(f"[ジョブ {job_id}] OpenAIに長文アブストラクト要約をリクエスト中 (モデル: {OPENAI_SUMMARY_MODEL})...")
-                    logger.debug(f"[ジョブ {job_id}] OpenAI 長文要約 - モデル: {OPENAI_SUMMARY_MODEL}")
-                    logger.debug(f"[ジョブ {job_id}] OpenAI 長文要約 - システムプロンプト (先頭100文字): {system_prompt_for_abstract[:100]}")
-                    logger.debug(f"[ジョブ {job_id}] OpenAI 長文要約 - ユーザープロンプト (先頭100文字): {user_prompt_for_abstract[:100]}")
-
                     response = await openai_aclient.chat.completions.create(
                         model=OPENAI_SUMMARY_MODEL,
                         messages=[
                             {"role": "system", "content": system_prompt_for_abstract},
                             {"role": "user", "content": user_prompt_for_abstract}
                         ],
-                        max_tokens=1500,
+                        max_tokens=1000,
                         temperature=0.2,
                     )
                     json_output['meta']['abstract_summary'] = response.choices[0].message.content.strip()
@@ -289,20 +280,20 @@ async def process_pdf_in_background(
                 json_output['meta']['abstract_summary'] = "アブストラクトが空のため要約できませんでした。"
         elif not openai_aclient and json_output.get('meta'):
              json_output['meta']['abstract_summary'] = "OpenAIクライアント未設定のため、自動要約は利用できません。"
-        elif json_output.get('meta') and not json_output['meta'].get('abstract'): # metaはあるがabstractがない場合
+        elif json_output.get('meta') and not json_output['meta'].get('abstract'):
             logger.warning(f"[ジョブ {job_id}] アブストラクトが見つからないため、長文要約をスキップします。")
             json_output['meta']['abstract_summary'] = "アブストラクトが見つからないため要約できませんでした。"
 
-
-        # 5. ジョブステータスを完了に更新
+        update_job_status_detail(job_id, "processing_complete")
         processing_jobs[job_id].update({"status": "completed", "result": json_output, "timestamp": datetime.utcnow().isoformat()})
         logger.info(f"[ジョブ {job_id}] バックグラウンド処理が正常に完了しました: {original_filename}")
 
     except Exception as e:
         logger.error(f"[ジョブ {job_id}] バックグラウンド処理中に予期せぬエラーが発生しました: {e}", exc_info=True)
+        error_message_for_user = f"エラーが発生しました: {str(e)[:100]}..."
+        update_job_status_detail(job_id, "error_occurred", custom_message=error_message_for_user)
         processing_jobs[job_id].update({"status": "failed", "error": str(e), "timestamp": datetime.utcnow().isoformat()})
     finally:
-        # 一時ファイルのクリーンアップ
         if temp_pdf_path and os.path.exists(temp_pdf_path):
             try:
                 os.remove(temp_pdf_path)
@@ -316,8 +307,6 @@ async def process_pdf_in_background(
             except Exception as e_clean_dir:
                 logger.error(f"[ジョブ {job_id}] 一時ディレクトリのクリーンアップ中にエラー: {e_clean_dir}")
         
-
-# ─── 非同期PDF処理受付エンドポイント ─────────────────────────
 @app.post("/api/parse_async", status_code=status.HTTP_202_ACCEPTED, summary="PDFを非同期で解析開始")
 async def api_parse_async_endpoint(
     file: UploadFile = File(..., description="解析するPDFファイル"),
@@ -325,19 +314,15 @@ async def api_parse_async_endpoint(
 ):
     job_id = str(uuid.uuid4())
     temp_pdf_path = None
-    temp_dir_for_job = None # ジョブ固有の一時ディレクトリ
+    temp_dir_for_job = None
 
     try:
-        # ジョブごとのユニークな一時ディレクトリを作成
         temp_dir_for_job = tempfile.mkdtemp(prefix=f"paperanalyzer_job_{job_id}_")
-        
         original_filename = file.filename if file.filename else "uploaded.pdf"
-        # ファイル名を安全にする (ディレクトリトラバーサル防止と基本的なサニタイズ)
         base_filename = os.path.basename(original_filename)
         safe_filename = "".join(c if c.isalnum() or c in ['.', '_', '-'] else '_' for c in base_filename)
-        if not safe_filename: # サニタイズの結果空になったらデフォルト名
-            safe_filename = f"{job_id}_uploaded.pdf" # よりユニークな名前に
-        
+        if not safe_filename: 
+            safe_filename = f"{job_id}_uploaded.pdf"
         temp_pdf_path = os.path.join(temp_dir_for_job, safe_filename)
 
         with open(temp_pdf_path, "wb") as f_out:
@@ -346,7 +331,8 @@ async def api_parse_async_endpoint(
 
         processing_jobs[job_id] = {
             "status": "queued", 
-            "filename": original_filename, # 元のファイル名も記録
+            "filename": original_filename,
+            "status_detail": PROGRESS_MESSAGES.get("queued"), 
             "timestamp": datetime.utcnow().isoformat()
         }
         
@@ -354,47 +340,43 @@ async def api_parse_async_endpoint(
             process_pdf_in_background,
             job_id,
             temp_pdf_path,
-            original_filename, # バックグラウンドタスクには元のファイル名を渡す
+            original_filename,
             file.content_type,
-            temp_dir_for_job # クリーンアップ対象のディレクトリ
+            temp_dir_for_job
         )
         
         logger.info(f"ジョブ {job_id} (ファイル: {original_filename}) をバックグラウンド処理キューに追加しました。")
-        return {"message": "PDF処理をバックグラウンドで開始しました。", "job_id": job_id}
+        return {"message": "PDF処理をバックグラウンドで開始しました。", "job_id": job_id, "status": "queued", "status_detail": PROGRESS_MESSAGES.get("queued")}
 
     except Exception as e:
         logger.error(f"非同期解析の開始中にエラーが発生しました (ファイル: {file.filename if file else '不明'}): {e}", exc_info=True)
-        # エラー発生時にも作成された一時ファイル/ディレクトリがあればクリーンアップ
         if temp_pdf_path and os.path.exists(temp_pdf_path): os.remove(temp_pdf_path)
         if temp_dir_for_job and os.path.exists(temp_dir_for_job): shutil.rmtree(temp_dir_for_job)
         raise HTTPException(status_code=500, detail=f"PDF処理の開始に失敗しました: {str(e)}")
     finally:
         if file:
-            await file.close() # アップロードファイルを閉じる
+            await file.close()
 
-# ─── 処理状況確認エンドポイント ─────────────────────────
 @app.get("/api/parse_status/{job_id}", summary="指定されたジョブIDの解析状況を取得")
 async def get_parse_status_endpoint(job_id: str):
     job = processing_jobs.get(job_id)
     if not job:
         logger.warning(f"存在しないジョブIDがリクエストされました: {job_id}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ジョブIDが見つかりません。")
-    
-    logger.debug(f"ジョブID {job_id} の状況確認: 現在のステータスは {job['status']}")
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"job_id": job_id, "status": "not_found", "error": "Job ID not found.", "status_detail": "ジョブが見つかりません。"}
+        )
     return job
 
-
-# ─── セクション要約エンドポイント (/summarize) ──────────────────────────────────
 class SummarizeRequest(BaseModel):
     text: str = Field(..., description="要約するテキスト")
-    max_tokens: Optional[int] = Field(10000, description="生成する最大トークン数")
+    max_tokens: Optional[int] = Field(1000, description="生成する最大トークン数")
 
 @app.post("/summarize", summary="指定されたテキストを要約")
 async def summarize(req: SummarizeRequest):
     if not sync_openai_client:
         logger.error("OpenAI同期クライアントが初期化されていません。要約を実行できません。")
         raise HTTPException(status_code=503, detail="要約サービスは現在利用できません。")
-    
     if not req.text or not req.text.strip():
         raise HTTPException(status_code=400, detail="要約するテキストが必要です。")
 
@@ -415,7 +397,6 @@ async def summarize(req: SummarizeRequest):
         logger.error(f"セクション要約中にエラーが発生しました: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"要約中にエラーが発生しました: {str(e)}")
 
-# ─── TTSエンドポイント (/tts) ───────────────────────────────────────────────────
 class TTSRequest(BaseModel):
     text: str = Field(..., description="音声合成するテキスト")
 
@@ -434,11 +415,10 @@ async def tts(req: TTSRequest):
             OutputFormat=AWS_POLLY_OUTPUT_FORMAT,
             VoiceId=AWS_POLLY_VOICE_ID_JA,
             Engine=AWS_POLLY_ENGINE,
-            LanguageCode='ja-JP' # 明示的に指定
+            LanguageCode='ja-JP'
         )
         if "AudioStream" in audio_response:
             logger.info("TTS音声ストリームの生成に成功しました。")
-            # ストリームを返すためにBytesIOでラップ
             return StreamingResponse(io.BytesIO(audio_response["AudioStream"].read()), media_type=f"audio/{AWS_POLLY_OUTPUT_FORMAT}")
         else:
             logger.error("TTS APIレスポンスにAudioStreamが含まれていませんでした。")
@@ -446,15 +426,13 @@ async def tts(req: TTSRequest):
     except NoCredentialsError:
         logger.error("AWS認証情報が見つからないため、TTSリクエストに失敗しました。", exc_info=True)
         raise HTTPException(status_code=500, detail="TTSサービス認証エラー。")
-    except (BotoCoreError, ClientError) as e: # AWS SDKの一般的なエラー
+    except (BotoCoreError, ClientError) as e:
         logger.error(f"AWS Polly API呼び出し中にエラーが発生しました: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"TTSサービスでエラーが発生しました: {str(e)}")
     except Exception as e:
         logger.error(f"TTS処理中に予期せぬエラーが発生しました: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"TTS処理中にエラーが発生しました: {str(e)}")
 
-
-# ─── Notion連携用エンドポイント (/api/save_to_notion) ─────────────────
 class NotionPageRequest(BaseModel):
     title: str
     authors: Optional[List[str]] = Field(default_factory=list)
@@ -469,7 +447,6 @@ class NotionPageRequest(BaseModel):
     memo: Optional[str] = None
 
 async def generate_short_abstract_for_notion(abstract_text: str) -> Optional[str]:
-    """Notion用にアブストラクトの短縮版を生成する"""
     if not abstract_text or not abstract_text.strip() or not openai_aclient:
         logger.warning("Notion用短縮アブストラクトを生成できません: テキストが空か、OpenAIクライアントが未初期化です。")
         return "アブストラクトが空か、OpenAI設定不備のため短縮要約は利用できません。"
@@ -508,7 +485,7 @@ async def save_to_notion_endpoint(request_data: NotionPageRequest):
         logger.error("NotionクライアントまたはデータベースIDが設定されていません。")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Notion連携が設定されていません。")
     
-    short_abstract_text_for_notion: Optional[str] = None # 型ヒント
+    short_abstract_text_for_notion: Optional[str] = None
     if request_data.original_abstract:
         short_abstract_text_for_notion = await generate_short_abstract_for_notion(request_data.original_abstract)
     
@@ -528,7 +505,6 @@ async def save_to_notion_endpoint(request_data: NotionPageRequest):
     logger.info(f"Notionへ保存中: {request_data.title[:50]}...")
     start_time_notion_save = time.time()
     try:
-        # create_notion_page は同期関数なので、run_in_threadpool で非同期に実行
         result = await run_in_threadpool(create_notion_page, **notion_page_data)
         end_time_notion_save = time.time()
         if "error" in result:
@@ -536,16 +512,12 @@ async def save_to_notion_endpoint(request_data: NotionPageRequest):
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result["error"])
         logger.info(f"Notionへの保存に成功しました: {request_data.title[:50]}。処理時間: {end_time_notion_save - start_time_notion_save:.2f}秒")
         return result
-    except Exception as e: # run_in_threadpool や create_notion_page が直接例外を出す場合
+    except Exception as e:
         end_time_notion_save = time.time()
         logger.error(f"Notionへの保存中に予期せぬ例外が発生しました: {str(e)}。処理時間: {end_time_notion_save - start_time_notion_save:.2f}秒", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Notionへの保存中にエラーが発生しました: {str(e)}")
 
-# ------------------------------------------------------------------------------
-# Uvicornで実行するための設定 (ローカル開発用)
 if __name__ == "__main__":
     import uvicorn
     logger.info("Uvicornをローカル開発モードで起動します。")
-    # "--host", "0.0.0.0" で外部からのアクセスも許可 (Docker内など)
-    # "--port", 8000 はCloud Runのデフォルトポート8080とは異なるので注意
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)), reload=True)

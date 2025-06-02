@@ -2,17 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import Image from 'next/image'; // Next.jsのImageコンポーネント
-import styles from './page.module.css'; // CSSモジュール
+import Image from 'next/image';
+import styles from './page.module.css';
 
-const logger = console; // シンプルなロガーとしてconsoleを使用
-const POLLING_INTERVAL = 3000; // 3秒ごとにステータスを確認
+const logger = console;
+const POLLING_INTERVAL = 3000;
 
 export default function Home() {
-  // --- React State Hooks ---
   const [file, setFile] = useState(null);
   const [originalFileName, setOriginalFileName] = useState("");
-  const [status, setStatus] = useState(null); // 'file_selected', 'uploading', 'queued', 'processing', 'done', 'failed'
+  const [status, setStatus] = useState(null); 
   const [error, setError] = useState(null);
 
   const [meta, setMeta] = useState(null);
@@ -40,6 +39,7 @@ export default function Home() {
 
   const [parsingJobId, setParsingJobId] = useState(null);
   const [parsingStatusMessage, setParsingStatusMessage] = useState("");
+  const [detailedParsingMessage, setDetailedParsingMessage] = useState(""); // 詳細進捗用
 
   const [isPotentiallyFirstLoad, setIsPotentiallyFirstLoad] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -85,7 +85,6 @@ export default function Home() {
     }
   }, [sections]);
 
-  // 解析経過時間タイマーの管理
   useEffect(() => {
     if (parsingJobId && (status === 'queued' || status === 'processing')) {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -107,16 +106,22 @@ export default function Home() {
     };
   }, [parsingJobId, status]);
 
-  // ポーリング処理 (バックエンドからジョブステータスと結果を取得)
   useEffect(() => {
     const fetchJobStatus = async () => {
-      if (!parsingJobId) return; // ジョブIDがなければ何もしない
+      if (!parsingJobId) return;
 
       try {
         const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/parse_status/${parsingJobId}`);
         const jobData = res.data;
         
-        // isPotentiallyFirstLoad の更新 (初回ロードメッセージ表示制御用)
+        if (jobData.status_detail) { // 詳細ステータスがあればセット
+            setDetailedParsingMessage(jobData.status_detail);
+        } else if (jobData.status === 'queued') {
+            setDetailedParsingMessage("解析キューに追加されました。");
+        } else if (jobData.status === 'processing' && !jobData.status_detail) { // status_detailがない場合のデフォルト
+            setDetailedParsingMessage("解析処理を実行中です...");
+        }
+        
         if (jobData.status === 'queued' || jobData.status === 'processing') {
             if (elapsedTime >= 5 && isPotentiallyFirstLoad) {
                 setShowInitialLoadMessage(true);
@@ -126,18 +131,18 @@ export default function Home() {
             setShowInitialLoadMessage(false);
         }
         
-        // バックエンドのステータスに応じてフロントエンドのステータスを更新
         if (jobData.status === 'completed') {
+          // ★★★★★ ここにログを追加 ★★★★★
+          // console.log("[fetchJobStatus] Backend job COMPLETED. JobData:", JSON.stringify(jobData, null, 2));
+          // ★★★★★ ここまで ★★★★★          
           setShowProcessingCompleteMessage(true); 
           setIsPotentiallyFirstLoad(false);
           setShowInitialLoadMessage(false);
-
           setMeta(jobData.result?.meta || null);
           setReferences(jobData.result?.references || null);
           setFiguresData(jobData.result?.figures || []);
           setTablesData(jobData.result?.tables || []);
           setGoogleDriveUrl(jobData.result?.google_drive_url || null);
-
           if (jobData.result?.sections && Array.isArray(jobData.result.sections)) {
             const processedSections = jobData.result.sections.map((sec, index) => ({
               id: `section-${index}-${(sec.head || `untitled-section-${index}`).replace(/\s+/g, '-')}`,
@@ -155,30 +160,39 @@ export default function Home() {
             setError('解析結果のセクション形式が正しくありません。');
             setSections(null);
           }
-          setStatus('done'); // ★★★ UI表示のために 'done' に設定
-
+          setStatus('done'); 
+          console.log("[fetchJobStatus] Frontend status SET TO 'done'"); // ★★★ デバッグログ ★★★
         } else if (jobData.status === 'failed') {
           setError(`解析処理に失敗しました: ${jobData.error || '不明なエラー'}`);
           setIsPotentiallyFirstLoad(false);
           setShowInitialLoadMessage(false);
           setStatus('failed');
-          setParsingJobId(null); // 失敗時はJobIdをクリアしてポーリングを停止
-
+          setParsingJobId(null); 
+        } else if (jobData.status === 'not_found') {
+            setError(`ジョブ (ID: ${parsingJobId}) が見つかりませんでした。`);
+            setStatus('failed');
+            setParsingJobId(null);
         } else if (jobData.status === 'queued' || jobData.status === 'processing') {
-            if (status !== jobData.status) { // 既存のstatusと異なる場合のみ更新
+            if (status !== jobData.status) {
                 setStatus(jobData.status);
             }
         } else {
             logger.warn("Unknown job status received from backend:", jobData.status);
-            setStatus('failed'); // 不明なステータスは失敗扱い
+            setStatus('failed');
             setParsingJobId(null);
         }
       } catch (err) {
         logger.error("Error during polling in fetchJobStatus:", err);
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
         if (err.response && err.response.status === 404) {
           setError(`ジョブ (ID: ${parsingJobId}) の結果取得に失敗しました (見つかりません)。`);
+          setDetailedParsingMessage("指定されたジョブが見つかりません。");
         } else {
           setError("処理状況の確認中に予期せぬエラーが発生しました。");
+          setDetailedParsingMessage("状況確認エラー。");
         }
         setStatus('failed');
         setParsingJobId(null); 
@@ -187,61 +201,62 @@ export default function Home() {
       }
     };
 
-    // ポーリングの開始/停止制御
     if (parsingJobId && (status === 'queued' || status === 'processing')) {
-      if (pollingIntervalRef.current) { // 念のため既存のインターバルをクリア
+      if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
       }
-      fetchJobStatus(); // 初回即時実行
+      fetchJobStatus(); 
       pollingIntervalRef.current = setInterval(fetchJobStatus, POLLING_INTERVAL);
     } else {
-      // parsingJobIdがない、またはstatusがqueued/processingでない場合はポーリング停止
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
     }
-
-    return () => { // クリーンアップ関数
+    return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null; 
       }
     };
-  }, [parsingJobId, status]); // ★★★ 依存配列を parsingJobId と status に限定 ★★★
+  }, [parsingJobId, status]); // elapsedTime を削除し、fetchJobStatusが常に最新のelapsedTimeを参照するように変更
 
 
-  // ★★★ parsingStatusMessage 更新専用の useEffect ★★★
+  // ★★★ parsingStatusMessage 更新専用の useEffect (修正) ★★★
   useEffect(() => {
     if (status === 'queued' || status === 'processing') {
-      let message = `解析処理: ${status} (${originalFileName || 'ファイル名不明'})`;
-      // 初回ロードメッセージが表示されておらず、かつ経過時間が0より大きい場合のみ経過時間を追加
-      if (!showInitialLoadMessage && elapsedTime > 0) { 
-        message += ` - 約${elapsedTime}秒経過...`;
+      let message = detailedParsingMessage || `処理中 (${originalFileName || 'ファイル名不明'})`; // 詳細メッセージがあればそれを優先
+      if (elapsedTime > 0) { // elapsedTimeが0より大きい場合のみ経過時間を追加
+        message += ` - ${elapsedTime}秒経過...`;
       }
       setParsingStatusMessage(message);
     } else if (status === 'done') {
       if (showProcessingCompleteMessage) {
         setParsingStatusMessage("解析が完了しました。結果を処理中です...");
       } else {
-        setParsingStatusMessage(""); // 結果表示後はメッセージをクリア
+        // setParsingStatusMessage("解析完了");
       }
     } else if (status === 'failed') {
-      setParsingStatusMessage(error ? `エラー: ${String(error)}` : "解析処理に失敗しました。");
-    } else if (!parsingJobId && status !== 'file_selected') { // アイドル状態や初期状態 (ファイル選択直後を除く)
-        setParsingStatusMessage("");
+      // detailedParsingMessage にエラー詳細が入っているか、error state を使う
+      const errorMessage = detailedParsingMessage && detailedParsingMessage.startsWith("エラー:") ? detailedParsingMessage :
+                           (error ? `エラー: ${String(error).split('\n')[0]}` : "解析処理に失敗しました。");
+      setParsingStatusMessage(errorMessage);
+    } else if (!parsingJobId && status !== 'file_selected') {
+        setParsingStatusMessage(""); // アイドル状態
+        setDetailedParsingMessage(""); // アイドル時は詳細メッセージもクリア
     } else if (status === 'file_selected') {
-        setParsingStatusMessage("PDFファイルが選択されました。解析を開始してください。");
+        setParsingStatusMessage("PDFファイルが選択されました。「PDFを解析」ボタンを押してください。");
+        setDetailedParsingMessage("");
     }
-  }, [status, elapsedTime, originalFileName, showInitialLoadMessage, showProcessingCompleteMessage, error, parsingJobId]);
+  }, [status, elapsedTime, originalFileName, detailedParsingMessage, error, parsingJobId, showProcessingCompleteMessage]);
 
-
-  // 「結果を処理中です」メッセージを結果表示後にクリアする
   useEffect(() => {
     if (status === 'done' && meta && showProcessingCompleteMessage) {
       const clearMsgTimeout = setTimeout(() => {
         setShowProcessingCompleteMessage(false);
-      }, 1500); 
+        setParsingStatusMessage(""); // ★★★ ここで一緒にクリア ★★★
+        setDetailedParsingMessage(""); // 詳細メッセージもクリア
+      }, 2000); 
       return () => clearTimeout(clearMsgTimeout);
     }
   }, [status, meta, showProcessingCompleteMessage]);
@@ -255,94 +270,57 @@ export default function Home() {
         setFile(null);
         setOriginalFileName("");
     }
-    setStatus(null);
-    setError(null);
-    setMeta(null);
-    setSections(null);
-    setReferences(null);
-    setFiguresData([]);
-    setTablesData([]);
+    setStatus(null); setError(null); setMeta(null); setSections(null);
+    setReferences(null); setFiguresData([]); setTablesData([]);
     setGoogleDriveUrl(null); 
-    setSummaries({});
-    setLoadingSummaries({});
-    setAudioUrls({});
-    setLoadingAudio({});
-    setExpanded({});
-    setNotionStatus(null);
-    setNotionError(null);
-    setNotionPageUrl(null);
-    setUserTags([]);
-    setCurrentTagInput("");
-    setUserRating(null);
-    setUserMemo("");
+    setSummaries({}); setLoadingSummaries({}); setAudioUrls({}); setLoadingAudio({});
+    setExpanded({}); setNotionStatus(null); setNotionError(null); setNotionPageUrl(null);
+    setUserTags([]); setCurrentTagInput(""); setUserRating(null); setUserMemo("");
     setParsingJobId(null); 
     setParsingStatusMessage("");
-    
-    setIsPotentiallyFirstLoad(false);
-    setShowInitialLoadMessage(false);
-    setShowProcessingCompleteMessage(false);
-    setElapsedTime(0);
-
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
+    setDetailedParsingMessage("");
+    setIsPotentiallyFirstLoad(false); setShowInitialLoadMessage(false);
+    setShowProcessingCompleteMessage(false); setElapsedTime(0);
+    if (pollingIntervalRef.current) { clearInterval(pollingIntervalRef.current); pollingIntervalRef.current = null; }
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
   };
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
-        setFile(selectedFile);
-        setOriginalFileName(selectedFile.name);
+        setFile(selectedFile); setOriginalFileName(selectedFile.name);
         resetState(true); 
-        setStatus("file_selected"); 
-        setError(null);
+        setStatus("file_selected"); setError(null);
     }
   };
 
   async function handleUpload(e) {
     e.preventDefault();
-    if (!file) {
-      setError('PDFファイルを選択してください');
-      return;
-    }
-    
+    if (!file) { setError('PDFファイルを選択してください'); return; }
     resetState(true); 
-    
-    setStatus('uploading');
-    setIsPotentiallyFirstLoad(true);
-    // setParsingStatusMessage は新しいuseEffectが担当
+    setStatus('uploading'); setIsPotentiallyFirstLoad(true);
     setError(null);
-
     const form = new FormData();
     form.append('file', file);
-
     try {
       const endpoint = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/parse_async`;
       const res = await axios.post(endpoint, form);
       if (res.data && res.data.job_id) {
         setParsingJobId(res.data.job_id); 
-        setStatus(res.data.status || 'queued'); 
+        setStatus(res.data.status || 'queued');
+        if(res.data.status_detail) setDetailedParsingMessage(res.data.status_detail); // 初期詳細メッセージ
       } else {
         throw new Error("バックエンドからジョブIDが返されませんでした。");
       }
     } catch (err) {
       logger.error("Error initiating async parse:", err);
       setError(err.response?.data?.detail || err.message || '非同期処理の開始に失敗しました。');
-      setStatus('failed');
-      // setParsingStatusMessage は新しいuseEffectが担当
-      setParsingJobId(null);
-      setIsPotentiallyFirstLoad(false);
-      setShowInitialLoadMessage(false);
+      setStatus('failed'); setParsingJobId(null);
+      setIsPotentiallyFirstLoad(false); setShowInitialLoadMessage(false);
     }
   }
 
   async function handleSummarize(sectionId, sectionHtmlText) {
-    // ... (変更なし) ...
     if (!sectionId) return;
     setLoadingSummaries(prev => ({ ...prev, [sectionId]: true }));
     setError(null); 
@@ -364,7 +342,6 @@ export default function Home() {
   }
 
   async function handleTTS(sectionId, textToSpeakHtml) {
-    // ... (変更なし) ...
     if (!sectionId) return;
     setLoadingAudio(prev => ({ ...prev, [sectionId]: true }));
     setError(null); 
@@ -391,7 +368,6 @@ export default function Home() {
   }
 
   const getPlainTextPreview = (htmlString, maxLength = 500) => {
-    // ... (変更なし) ...
     if (typeof window === 'undefined' || !htmlString) { 
         return { previewText: "", plainTextLength: 0, isLong: false, fullTextHtml: htmlString || "" };
     }
@@ -405,30 +381,18 @@ export default function Home() {
   };
 
   const handleSaveToNotion = async () => {
-    // ... (変更なし、googleDriveUrl は notionData に含まれる) ...
     if (!meta || !meta.title) {
       setNotionError("Notionに保存するための情報が不足しています（タイトルは必須）。");
       setNotionStatus('failed');
       return;
     }
-    setNotionStatus('saving');
-    setNotionError(null); 
-    setNotionPageUrl(null); 
-
+    setNotionStatus('saving'); setNotionError(null); setNotionPageUrl(null); 
     const notionData = {
-      title: meta.title,
-      authors: meta.authors || [],
-      journal: meta.journal || null,
-      published_date: meta.issued || null,
-      doi: meta.doi || null,
-      pdf_filename: originalFileName || null,
-      pdf_google_drive_url: googleDriveUrl, 
-      original_abstract: meta.abstract || null,
-      tags: userTags,
-      rating: userRating,
-      memo: userMemo,
+      title: meta.title, authors: meta.authors || [], journal: meta.journal || null,
+      published_date: meta.issued || null, doi: meta.doi || null,
+      pdf_filename: originalFileName || null, pdf_google_drive_url: googleDriveUrl, 
+      original_abstract: meta.abstract || null, tags: userTags, rating: userRating, memo: userMemo,
     };
-    
     try {
       const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/save_to_notion`, notionData);
       if (response.data.success) {
@@ -447,49 +411,32 @@ export default function Home() {
 
   const handleTagInputChange = (e) => setCurrentTagInput(e.target.value);
   const handleTagInputKeyDown = (e) => {
-    // ... (変更なし) ...
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       const newTag = currentTagInput.trim();
-      if (newTag && !userTags.includes(newTag)) {
-        setUserTags([...userTags, newTag]);
-      }
+      if (newTag && !userTags.includes(newTag)) setUserTags([...userTags, newTag]);
       setCurrentTagInput("");
     }
   };
   const removeTag = (tagToRemove) => setUserTags(userTags.filter(tag => tag !== tagToRemove));
 
   const renderSection = (sec, isLastContentSection) => {
-    // ... (変更なし) ...
     const { id: sectionId, head: name, text: htmlText, figures: sectionFigures, level, subsections } = sec;
-    
     const plainTextContent = (htmlText || "").replace(/<[^>]+>/g, '').trim();
     const hasMeaningfulContent = name || plainTextContent || (sectionFigures && sectionFigures.length > 0) || (subsections && subsections.length > 0);
     if (!hasMeaningfulContent) return null;
-
     const { previewText, isLong: isTextLong, fullTextHtml } = getPlainTextPreview(htmlText, 500);
     const isExpandedForThisSection = sectionId ? !!expanded[sectionId] : true;
     const textToRenderHtml = isTextLong && name && !isExpandedForThisSection ? `<p>${previewText.replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br />')}</p>` : fullTextHtml;
-    
-    const isReferencesSectionByName = typeof name === 'string' && (
-        name.toLowerCase().includes('reference') ||
-        name.toLowerCase().includes('参考文献') ||
-        name.toLowerCase().includes('bibliography') ||
-        name.toLowerCase().includes('literature cited')
-    );
-
+    const isReferencesSectionByName = typeof name === 'string' && (name.toLowerCase().includes('reference') || name.toLowerCase().includes('参考文献') || name.toLowerCase().includes('bibliography') || name.toLowerCase().includes('literature cited'));
     const sectionStyleClasses = [styles.section];
-    if (level > 1) sectionStyleClasses.push(styles.subSection); 
-    
-    const HeadingTag = `h${Math.min(6, 1 + level)}`; 
-
+    if (level > 1) sectionStyleClasses.push(styles.subSection);
+    const HeadingTag = `h${Math.min(6, 1 + level)}`;
     return (
       <section key={sectionId} id={name ? encodeURIComponent(name) : undefined} className={sectionStyleClasses.join(' ')}>
         {name && <HeadingTag>{name}</HeadingTag>}
         {(!name && plainTextContent) && <HeadingTag>無題のセクション</HeadingTag>}
-        
         <div className={styles.sectionText} dangerouslySetInnerHTML={{ __html: textToRenderHtml }} />
-        
         {sectionFigures && sectionFigures.length > 0 && (
           <div className={styles.figureItemTeiContainer}>
             <h4>このセクションの図 (論文内キャプションより):</h4>
@@ -500,14 +447,12 @@ export default function Home() {
             ))}
           </div>
         )}
-
         {!isReferencesSectionByName && isTextLong && name && plainTextContent && (
           <button className={styles.readMoreButton} onClick={() => setExpanded(prev => ({ ...prev, [sectionId]: !prev[sectionId] }))}>
             {isExpandedForThisSection ? '▲ 閉じる' : '▼ 続きを読む'}
           </button>
         )}
-
-        {!isReferencesSectionByName && plainTextContent && ( 
+        {!isReferencesSectionByName && plainTextContent && (
           <div className={styles.actionsContainer}>
             <div className={styles.actionGroup}>
               <button className={styles.summaryButton} onClick={() => handleSummarize(sectionId, htmlText)} disabled={loadingSummaries[sectionId]}>
@@ -520,61 +465,27 @@ export default function Home() {
                     <button className={styles.ttsButtonSmall} onClick={() => handleTTS(sectionId, summaries[sectionId])} disabled={loadingAudio[sectionId] || !summaries[sectionId]}>
                       {loadingAudio[sectionId] ? '生成中...' : '要約を読み上げ ▶'}
                     </button>
-                    {audioUrls[sectionId] && (
-                      <audio
-                        controls
-                        src={audioUrls[sectionId]}
-                        onEnded={() => { 
-                          URL.revokeObjectURL(audioUrls[sectionId]);
-                          setAudioUrls(prev => ({...prev, [sectionId]: null}));
-                        }}
-                        style={{ marginTop: '8px', width: '100%'}}
-                      />
-                    )}
+                    {audioUrls[sectionId] && (<audio controls src={audioUrls[sectionId]} onEnded={() => { URL.revokeObjectURL(audioUrls[sectionId]); setAudioUrls(prev => ({...prev, [sectionId]: null})); }} style={{ marginTop: '8px', width: '100%'}}/> )}
                   </div>
                 </>
               )}
             </div>
           </div>
         )}
-
-        {isLastContentSection && !isReferencesSectionByName && (
-            <div className={styles.sectionFooterActions}>
-              <a href="#notion-save-area" className={styles.actionLinkButton}> ▲ Notion登録セクションへ移動 </a>
-            </div>
-        )}
-
-        {subsections && subsections.length > 0 && (
-          <div className={styles.subSectionsContainer}>
-            {subsections.map(subSec => renderSection(subSec, false))}
-          </div>
-        )}
+        {isLastContentSection && !isReferencesSectionByName && (<div className={styles.sectionFooterActions}><a href="#notion-save-area" className={styles.actionLinkButton}> ▲ Notion登録セクションへ移動 </a></div>)}
+        {subsections && subsections.length > 0 && (<div className={styles.subSectionsContainer}>{subsections.map(subSec => renderSection(subSec, false))}</div>)}
       </section>
     );
   };
 
-  const contentSectionsForNotionLink = sections ? sections.filter(sec =>
-    // ... (変更なし) ...
-    sec.level === 1 &&
-    (sec.head || ((sec.text || "").replace(/<[^>]+>/g, '').trim())) &&
-    !(typeof sec.head === 'string' &&
-      ( sec.head.toLowerCase().includes('reference') ||
-        sec.head.toLowerCase().includes('参考文献') ||
-        sec.head.toLowerCase().includes('bibliography') ||
-        sec.head.toLowerCase().includes('literature cited') ||
-        sec.head.toLowerCase().includes('figure') ||
-        sec.head.toLowerCase().includes('table')
-      )
-    )
-  ) : [];
-
+  const contentSectionsForNotionLink = sections ? sections.filter(sec =>sec.level === 1 && (sec.head || ((sec.text || "").replace(/<[^>]+>/g, '').trim())) && !(typeof sec.head === 'string' && (sec.head.toLowerCase().includes('reference') || sec.head.toLowerCase().includes('参考文献') || sec.head.toLowerCase().includes('bibliography') || sec.head.toLowerCase().includes('literature cited') || sec.head.toLowerCase().includes('figure') || sec.head.toLowerCase().includes('table')))) : [];
   const isParsingInProgress = status === 'uploading' || status === 'queued' || status === 'processing';
 
   return (
     <main className={styles.main}>
       <div className={styles.header}>
         <div className={styles.titleContainer}>
-          <Image src="/PapeLog.png" alt="PapeLog Logo" width={128} height={128} className={styles.logoImage} /> {/* ロゴサイズ変更 */}
+          <Image src="/PapeLog.png" alt="PapeLog Logo" width={128} height={128} className={styles.logoImage} />
           <h1>PapeLog</h1>
         </div>
         <p className={styles.description}>
@@ -593,33 +504,32 @@ export default function Home() {
         {originalFileName && <p className={styles.fileName}>選択中のファイル: {originalFileName}</p>}
       </form>
 
-      {/* 初回ロードメッセージ */}
+      {/* ★★★ 初回起動メッセージ ★★★ */}
+      {/* isPotentiallyFirstLoad と elapsedTime に基づいて表示制御 */}
       {showInitialLoadMessage && (status === 'uploading' || status === 'queued' || status === 'processing') && (
-        <p className={styles.infoMessage}>
+        <p className={styles.infoMessage}> {/* 中央揃えの情報メッセージスタイル */}
           初回アクセス時はサーバーの準備に時間がかかることがあります (最大2～3分程度)。しばらくお待ちください。
-          {/* ★★★ parsingStatusMessage更新用useEffectで経過時間もメッセージに含まれるようにしたので、ここでは重複させない ★★★ */}
-          {/* {isParsingInProgress && elapsedTime > 0 && ` (約${elapsedTime}秒経過)`} */}
+          {elapsedTime > 0 && ` (約${elapsedTime}秒経過)`}
         </p>
       )}
       
-      {/* 通常のポーリング中/完了/失敗メッセージ */}
-      {/* ★★★ parsingStatusMessage を一元的に表示 ★★★ */}
-      {parsingStatusMessage && (!showInitialLoadMessage || !(status === 'uploading' || status === 'queued' || status === 'processing')) &&
-        <p className={status === 'failed' ? styles.error : styles.statusMessage} dangerouslySetInnerHTML={{ __html: parsingStatusMessage.replace(/\n/g, '<br />') }} />
-      }
-      
-      {/* エラーメッセージ (parsingStatusMessageでカバーしきれない場合や、より詳細なエラー表示用) */}
-      {/* {status === 'failed' && error && !parsingStatusMessage.includes(String(error)) && // parsingStatusMessageに既に入ってなければ
-        <p className={styles.error} dangerouslySetInnerHTML={{ __html: String(error).replace(/\n/g, '<br />') }} />
-      } */}
-      
-      {/* 解析完了直後の「結果を処理中です」は parsingStatusMessage で表示される */}
-      {/* {showProcessingCompleteMessage && status === 'done' && parsingStatusMessage && 
-          <p className={styles.infoMessage}>{parsingStatusMessage}</p>
-      } */}
+      {/* ★★★ 主要なステータスメッセージ (処理中、完了、失敗) ★★★ */}
+      {/* 初回ロードメッセージが表示されておらず、かつ parsingStatusMessage がある場合に表示 */}
+      {!showInitialLoadMessage && parsingStatusMessage && (
+        <p 
+          // status の値に応じて、.statusMessage または .error スタイルを動的に適用
+          className={
+            status === 'failed' ? styles.error : 
+            (status === 'done' && showProcessingCompleteMessage) ? styles.infoMessage : // 完了直後のメッセージもinfoMessageスタイル
+            styles.statusMessage // 通常の処理中、または完了後の通常メッセージ
+          } 
+          dangerouslySetInnerHTML={{ __html: parsingStatusMessage.replace(/\n/g, '<br />') }} 
+        />
+      )}
 
       {status === 'done' && meta && (
         <>
+          {/* ... (結果表示部分は変更なし) ... */}
           <section className={`${styles.section} ${styles.metaSection}`}>
             {meta.title && <h2>{meta.title}</h2>}
             <p><strong>著者:</strong> <span>{meta.authors && meta.authors.length > 0 ? meta.authors.join(', ') : 'N/A'}</span></p>
@@ -627,7 +537,6 @@ export default function Home() {
             <p><strong>発行日:</strong> <span>{meta.issued || 'N/A'}</span></p>
             {meta.doi && <p><strong>DOI:</strong> <span>{meta.doi}</span></p>}
             {googleDriveUrl && <p><strong>Google Drive Link:</strong> <a href={googleDriveUrl} target="_blank" rel="noopener noreferrer">{googleDriveUrl}</a></p>}
-
             {meta.abstract && (
               <div className={styles.abstractContainer}>
                 <div className={styles.abstractOriginal}>
@@ -643,9 +552,7 @@ export default function Home() {
               </div>
             )}
           </section>
-
           <section id="notion-save-area" className={`${styles.section} ${styles.notionSaveSection}`}>
-            {/* ... (Notion保存フォームは変更なし) ... */}
             <h3>Notionに保存</h3>
             <div className={styles.notionSaveContainer}>
               <div className={styles.inputRow}>
@@ -689,7 +596,6 @@ export default function Home() {
       )}
 
       {status === 'done' && sectionNames.length > 0 && (
-        // ... (目次部分は変更なし) ...
         <details className={styles.toc} open>
           <summary>目次（全{sectionNames.length}主要セクション）</summary>
           <ul>
@@ -700,7 +606,6 @@ export default function Home() {
       )}
 
       {status === 'done' && sections && (
-        // ... (セクション表示部分は変更なし) ...
         <div className={styles.results}>
           {sections.filter(sec => sec.level === 1).length > 0 ? (
             sections.filter(sec => sec.level === 1).map((sec) => {
@@ -719,7 +624,6 @@ export default function Home() {
       )}
 
       {status === 'done' && figuresData && figuresData.length > 0 && (
-        // ... (図の表示部分は変更なし) ...
         <section className={`${styles.section} ${styles.extractedMediaSection}`}>
           <h2>抽出された図 (PDF全体より)</h2>
           <div className={styles.figuresGrid}>
@@ -742,7 +646,6 @@ export default function Home() {
       )}
 
       {status === 'done' && tablesData && tablesData.length > 0 && (
-        // ... (表の表示部分は変更なし) ...
         <section className={`${styles.section} ${styles.extractedMediaSection}`}>
           <h2>抽出された表 (PDF全体より)</h2>
           {tablesData
@@ -772,7 +675,6 @@ export default function Home() {
       )}
       
       {status === 'done' && references && references.length > 0 && (
-        // ... (参考文献部分は変更なし) ...
         <section className={`${styles.section} ${styles.referencesSection}`} id="references_list_title">
           <div className={styles.sectionHeaderWithButton}>
             <h2>References</h2>
