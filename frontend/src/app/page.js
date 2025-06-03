@@ -505,9 +505,9 @@ export default function Home() {
           <h1>PapeLog</h1>
         </div>
         <p className={styles.description}>
-          PDF論文をアップロードすれば、AIが構造解析しGoogle Driveへ賢く保存。<br/>さらに、<strong>AIがタグ候補を自動提案！</strong><br />
+          PDF論文をアップロードすれば、AIが構造解析しGoogle Driveへ賢く保存。<br/><strong>タグ候補もAIが自動で提案！</strong><br />
           AI要約や音声読み上げで時短学習、評価・メモ・タグと共にNotionへ一元管理。<br />
-          あなたの「読んだ」を、整理された「知識」へ深化させます。
+          あなたの「読んだ」を、たしかな「記録」へ。
         </p>
       </div>
 
