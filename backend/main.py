@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException, File, UploadFile, Response, status, 
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Set
 from google.cloud import secretmanager
 from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 from contextlib import closing
@@ -22,6 +22,7 @@ from datetime import datetime
 
 from fastapi.concurrency import run_in_threadpool
 import time
+import difflib
 
 # ユーティリティ関数
 from app.tei_utils import extract_sections_from_tei, extract_references_from_tei
@@ -32,6 +33,7 @@ from app.tei2json import convert_xml_to_json
 from app.notion_utils import create_notion_page
 from app.notion_utils import notion_client_instance as notion_utils_client
 from app.notion_utils import NOTION_DATABASE_ID as NOTION_DB_ID_FROM_UTILS
+from app.notion_utils import get_all_existing_tags_from_notion
 
 # Google Drive連携用ユーティリティとテキストユーティリティのインポート
 from app.gdrive_utils import get_gdrive_service_from_json_key, upload_file_to_drive
@@ -83,8 +85,8 @@ if OPENAI_API_KEY:
     logger.info("OpenAIクライアント (同期・非同期) を設定しました。")
 else:
     logger.error("OpenAI APIキーが利用できないため、クライアントは初期化されませんでした。")
-OPENAI_SUMMARY_MODEL = os.getenv("OPENAI_SUMMARY_MODEL", "gpt-4.1-mini")
-logger.info(f"OpenAI要約モデルとして '{OPENAI_SUMMARY_MODEL}' を使用します。")
+OPENAI_SUMMARY_MODEL = os.getenv("OPENAI_SUMMARY_MODEL", "gpt-4-mini")
+logger.info(f"OpenAI要約・タグ抽出モデルとして '{OPENAI_SUMMARY_MODEL}' を使用します。")
 
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 AWS_POLLY_VOICE_ID_JA = os.getenv("AWS_POLLY_VOICE_ID_JA", "Tomoko")
@@ -102,8 +104,7 @@ if aws_access_key_id_val and aws_secret_access_key_val:
         polly = boto3.client(
             "polly", region_name=AWS_REGION,
             aws_access_key_id=aws_access_key_id_val,
-            aws_secret_access_key=aws_secret_access_key_val
-        )
+            aws_secret_access_key=aws_secret_access_key_val )
         logger.info("AWS Pollyクライアントを初期化しました。")
     except Exception as e:
         logger.error(f"AWS Pollyクライアントの初期化中にエラーが発生しました: {e}", exc_info=True)
@@ -123,28 +124,43 @@ try:
     GDRIVE_FOLDER_ID_FROM_SECRET = get_secret(GDRIVE_FOLDER_ID_SECRET_NAME)
     if gdrive_sa_key_json_content_str:
         gdrive_service = get_gdrive_service_from_json_key(gdrive_sa_key_json_content_str)
-        if gdrive_service:
-            logger.info("Google DriveサービスをSecret Manager経由で正常に初期化しました。")
-        else:
-            logger.error("Secret Managerからのキーを使用してGoogle Driveサービスの初期化に失敗しました。")
-    else:
-        logger.error(f"Google Drive用のサービスアカウントキーJSONがSecret Managerに見つかりません (シークレット名: {GDRIVE_SA_KEY_JSON_SECRET_NAME})。")
-    if not GDRIVE_FOLDER_ID_FROM_SECRET:
-        logger.error(f"Google DriveフォルダIDがSecret Managerに見つかりません (シークレット名: {GDRIVE_FOLDER_ID_SECRET_NAME})。Google Driveへのアップロードは失敗する可能性があります。")
-    else:
-        logger.info(f"Google Driveアップロード先フォルダID: {GDRIVE_FOLDER_ID_FROM_SECRET}")
+        if gdrive_service: logger.info("Google DriveサービスをSecret Manager経由で正常に初期化しました。")
+        else: logger.error("Secret Managerからのキーを使用してGoogle Driveサービスの初期化に失敗しました。")
+    else: logger.error(f"Google Drive用のサービスアカウントキーJSONがSecret Managerに見つかりません (シークレット名: {GDRIVE_SA_KEY_JSON_SECRET_NAME})。")
+    if not GDRIVE_FOLDER_ID_FROM_SECRET: logger.error(f"Google DriveフォルダIDがSecret Managerに見つかりません (シークレット名: {GDRIVE_FOLDER_ID_SECRET_NAME})。")
+    else: logger.info(f"Google Driveアップロード先フォルダID: {GDRIVE_FOLDER_ID_FROM_SECRET}")
 except Exception as e:
     logger.error(f"Google Driveシークレットの取得またはサービスの初期化中にエラーが発生しました: {e}", exc_info=True)
 
+existing_notion_tags: Set[str] = set()
+
+@app.on_event("startup")
+async def startup_event():
+    global existing_notion_tags
+    if notion_utils_client and NOTION_DB_ID_FROM_UTILS:
+        try:
+            logger.info("アプリケーション起動時にNotionから既存タグリストの取得を試みます...")
+            tags = await run_in_threadpool(get_all_existing_tags_from_notion, tag_property_name="タグ") # ご自身のDBのタグプロパティ名に合わせてください
+            if tags:
+                existing_notion_tags = set(tags)
+                logger.info(f"Notionから既存タグを {len(existing_notion_tags)} 件取得しました。")
+            else:
+                logger.warning("Notionから既存タグを取得できませんでした、またはタグが存在しません。")
+        except Exception as e:
+            logger.error(f"Notion既存タグ取得中にエラー: {e}", exc_info=True)
+    else:
+        logger.warning("Notionクライアント未設定のため、既存タグは取得しません。")
+
 processing_jobs: Dict[str, Dict[str, Any]] = {}
 
-# ★★★ 詳細な進捗メッセージの定義を修正・調整 ★★★
 PROGRESS_MESSAGES = {
     "queued": "解析キューに追加されました。順番をお待ちください...",
-    "contacting_grobid": "GROBIDサービスと通信し、解析処理を待機中です (サーバーの初回起動時は時間がかかる場合があります)...", # ★ GROBID応答待ち用
+    "contacting_grobid": "GROBIDサービスと通信し、解析処理を待機中です (サーバーの初回起動時は時間がかかる場合があります)...",
     "data_extraction_formatting": "GROBIDによる解析結果を処理し、データ（本文、メタ情報、図、表など）を抽出・整形中です...",
     "gdrive_uploading": "Google DriveへPDFを保存中です...",
     "summarizing_abstract_long": "アブストラクトの要約を生成中です...",
+    "suggesting_tags": "関連タグをAIが提案中です...",
+    "analyzing_suggested_tags": "提案タグを既存タグと照合中です...",
     "processing_complete": "最終処理を行い、結果をまとめています...",
     "error_occurred": "エラーが発生しました。詳細を確認しています...",
 }
@@ -155,6 +171,24 @@ def update_job_status_detail(job_id: str, status_key: str, custom_message: Optio
         processing_jobs[job_id].update({"status_detail": message, "timestamp": datetime.utcnow().isoformat()})
         logger.info(f"[ジョブ {job_id}] 詳細ステータス更新: {message}")
 
+def find_similar_existing_tag(ai_tag: str, existing_tags: Set[str], threshold=0.7) -> Optional[str]:
+    if not ai_tag or not ai_tag.strip(): return None
+    normalized_ai_tag = ai_tag.lower().strip()
+    for ex_tag in existing_tags:
+        if normalized_ai_tag == ex_tag.lower().strip(): return ex_tag
+    closest_match: Optional[str] = None
+    highest_similarity = 0.0
+    for ex_tag in existing_tags:
+        normalized_ex_tag = ex_tag.lower().strip()
+        similarity = difflib.SequenceMatcher(None, normalized_ai_tag, normalized_ex_tag).ratio()
+        if similarity > highest_similarity:
+            highest_similarity = similarity
+            closest_match = ex_tag
+    if closest_match and highest_similarity >= threshold:
+        logger.debug(f"類似タグ候補: AIタグ '{ai_tag}' vs 既存タグ '{closest_match}' (類似度: {highest_similarity:.2f})")
+        return closest_match
+    return None
+
 @app.get("/health", summary="ヘルスチェックエンドポイント")
 async def health(): return {"status": "ok"}
 @app.get("/isalive", summary="生存確認エンドポイント (エイリアス)")
@@ -163,37 +197,30 @@ async def isalive(): return {"status": "alive"}
 async def api_isalive(): return Response(content="true", media_type="text/plain")
 
 async def process_pdf_in_background(
-    job_id: str,
-    temp_pdf_path: str,
-    original_filename: str,
-    content_type: Optional[str],
-    temp_dir_to_clean: str
+    job_id: str, temp_pdf_path: str, original_filename: str,
+    content_type: Optional[str], temp_dir_to_clean: str
 ):
     logger.info(f"[ジョブ {job_id}] バックグラウンド処理を開始しました: {original_filename}")
-    # ★★★ 初期詳細ステータスを "contacting_grobid" に設定 ★★★
     processing_jobs[job_id].update({"status": "processing", "status_detail": PROGRESS_MESSAGES.get("contacting_grobid"), "timestamp": datetime.utcnow().isoformat()})
     
     json_output: Dict[str, Any] = {}
     google_drive_url: Optional[str] = None
-    global gdrive_service, GDRIVE_FOLDER_ID_FROM_SECRET
+    global gdrive_service, GDRIVE_FOLDER_ID_FROM_SECRET, existing_notion_tags
 
     try:
+        update_job_status_detail(job_id, "contacting_grobid")
         tei_xml_string: Optional[str] = None
         async with httpx.AsyncClient(timeout=300.0) as client:
             with open(temp_pdf_path, 'rb') as f_pdf:
                 files_for_grobid = {'input': (original_filename, f_pdf, content_type)}
-                
                 logger.info(f"[ジョブ {job_id}] PDFをGROBIDに送信し、応答待機中: {GROBID_SERVICE_URL}")
-                # この時点でフロントエンドには "contacting_grobid" のメッセージが表示されている
-
                 try:
                     start_time_grobid = time.time()
-                    grobid_response = await client.post(GROBID_SERVICE_URL, files=files_for_grobid) # ここでGROBIDの処理を待つ
+                    grobid_response = await client.post(GROBID_SERVICE_URL, files=files_for_grobid)
                     grobid_response.raise_for_status()
                     tei_xml_string = grobid_response.text
                     end_time_grobid = time.time()
                     logger.info(f"[ジョブ {job_id}] GROBIDからTEI XMLを受信しました。処理時間: {end_time_grobid - start_time_grobid:.2f}秒")
-
                 except httpx.HTTPStatusError as e:
                     error_detail = e.response.text[:500] if e.response else str(e)
                     logger.error(f"[ジョブ {job_id}] GROBIDサービスエラー ({e.response.status_code if e.response else 'N/A'}): {error_detail}", exc_info=True)
@@ -209,14 +236,10 @@ async def process_pdf_in_background(
             update_job_status_detail(job_id, "error_occurred", custom_message="GROBIDからTEI XMLを受信できませんでした。")
             raise Exception("GROBIDからTEI XMLを受信できませんでした。")
 
-        # ★★★ GROBID完了後、次のデータ抽出・整形フェーズのメッセージに更新 ★★★
         update_job_status_detail(job_id, "data_extraction_formatting")
         logger.info(f"[ジョブ {job_id}] TEI XMLをJSONに変換中 (図表抽出含む): {original_filename}")
         start_time_conversion = time.time()
-        json_output = convert_xml_to_json(
-            tei_xml_string,
-            pdf_path=temp_pdf_path
-        )
+        json_output = convert_xml_to_json(tei_xml_string, pdf_path=temp_pdf_path)
         end_time_conversion = time.time()
         logger.info(f"[ジョブ {job_id}] TEI XMLからJSONへの変換が完了しました。処理時間: {end_time_conversion - start_time_conversion:.2f}秒")
 
@@ -225,18 +248,12 @@ async def process_pdf_in_background(
         fallback_drive_filename_base = os.path.splitext(original_filename)[0] if original_filename else "untitled_document"
         drive_filename = sanitize_filename(extracted_title, fallback_name=fallback_drive_filename_base)
         logger.info(f"[ジョブ {job_id}] Google Drive用ファイル名を生成しました: {drive_filename}")
-
         if gdrive_service and GDRIVE_FOLDER_ID_FROM_SECRET:
             logger.info(f"[ジョブ {job_id}] Google Driveへアップロード中: {temp_pdf_path} を {drive_filename} として")
             start_time_gdrive = time.time()
             uploaded_file_info = await run_in_threadpool(
-                upload_file_to_drive,
-                service=gdrive_service,
-                local_file_path=temp_pdf_path,
-                filename_on_drive=drive_filename,
-                folder_id=GDRIVE_FOLDER_ID_FROM_SECRET,
-                make_public=True
-            )
+                upload_file_to_drive, service=gdrive_service, local_file_path=temp_pdf_path,
+                filename_on_drive=drive_filename, folder_id=GDRIVE_FOLDER_ID_FROM_SECRET, make_public=True )
             end_time_gdrive = time.time()
             if uploaded_file_info and uploaded_file_info.get('webViewLink'):
                 google_drive_url = uploaded_file_info.get('webViewLink')
@@ -258,17 +275,13 @@ async def process_pdf_in_background(
                     start_time_openai_long_abs = time.time()
                     system_prompt_for_abstract = """あなたは医療保健分野の学術論文を専門とする高度なAIアシスタントです。提供された学術論文のアブストラクト（抄録）を読み、その内容を起承転結をつけて日本語の自然な文章としてまとめてください。また、当該分野での現在の潮流や背景文脈を考慮し、必要であればそれを簡潔に補足情報として含めてください。"""
                     user_prompt_for_abstract = f"""以下のアブストラクトを上記の指示に従って、HTMLタグを一切含まず、段落間は空行で区切るプレーンテキスト形式で要約してください。\n\n---アブストラクトここから---\n{abstract_text}\n---アブストラクトここまで---\n\n要約（日本語、HTMLタグなし、段落間は空行）:"""
-                    
                     logger.info(f"[ジョブ {job_id}] OpenAIに長文アブストラクト要約をリクエスト中 (モデル: {OPENAI_SUMMARY_MODEL})...")
                     response = await openai_aclient.chat.completions.create(
                         model=OPENAI_SUMMARY_MODEL,
                         messages=[
                             {"role": "system", "content": system_prompt_for_abstract},
-                            {"role": "user", "content": user_prompt_for_abstract}
-                        ],
-                        max_tokens=1000,
-                        temperature=0.2,
-                    )
+                            {"role": "user", "content": user_prompt_for_abstract}],
+                        max_tokens=1500, temperature=0.2, )
                     json_output['meta']['abstract_summary'] = response.choices[0].message.content.strip()
                     end_time_openai_long_abs = time.time()
                     logger.info(f"[ジョブ {job_id}] 長文アブストラクト要約を受信しました。処理時間: {end_time_openai_long_abs - start_time_openai_long_abs:.2f}秒")
@@ -284,6 +297,42 @@ async def process_pdf_in_background(
             logger.warning(f"[ジョブ {job_id}] アブストラクトが見つからないため、長文要約をスキップします。")
             json_output['meta']['abstract_summary'] = "アブストラクトが見つからないため要約できませんでした。"
 
+        update_job_status_detail(job_id, "suggesting_tags")
+        json_output['meta']['suggested_tags_with_alternatives'] = []
+        if json_output.get('meta') and openai_aclient:
+            title_for_tags = json_output['meta'].get('title', '')
+            abstract_for_tags = json_output['meta'].get('abstract', '')
+            ai_suggested_tags_list = []
+            if title_for_tags or abstract_for_tags:
+                try:
+                    tag_extraction_prompt_parts = []
+                    if title_for_tags: tag_extraction_prompt_parts.append(f"タイトル: {title_for_tags}")
+                    if abstract_for_tags: tag_extraction_prompt_parts.append(f"アブストラクト (冒頭): {abstract_for_tags[:1500]}")
+                    full_prompt_text = "\n\n".join(tag_extraction_prompt_parts)
+                    system_message_tags = "あなたは学術論文の内容を分析し、関連性の高いキーワードやトピックを抽出する専門家です。"
+                    user_message_tags = f"""以下の論文情報から、この論文を最もよく表す主要なキーワードや研究分野、方法論などを、重要と思われる順にカンマ区切りで3つから5つ提案してください。各キーワードは日本語または英語の簡潔な名詞または名詞句としてください。\n\n{full_prompt_text}\n\n提案タグ (カンマ区切り、3-5個):"""
+                    response_tags = await openai_aclient.chat.completions.create(
+                        model=OPENAI_SUMMARY_MODEL,
+                        messages=[ {"role": "system", "content": system_message_tags}, {"role": "user", "content": user_message_tags} ],
+                        max_tokens=60, temperature=0.5, n=1, stop=None, )
+                    suggested_tags_str = response_tags.choices[0].message.content.strip()
+                    ai_suggested_tags_list = [tag.strip() for tag in suggested_tags_str.split(',') if tag.strip()]
+                    logger.info(f"[ジョブ {job_id}] AIによる提案タグ: {ai_suggested_tags_list}")
+                except Exception as e_tags:
+                    logger.error(f"[ジョブ {job_id}] タグ候補の抽出中にエラー: {e_tags}", exc_info=True)
+            if ai_suggested_tags_list:
+                update_job_status_detail(job_id, "analyzing_suggested_tags")
+                processed_suggestions = []
+                for ai_tag in ai_suggested_tags_list:
+                    similar_existing = await run_in_threadpool(find_similar_existing_tag, ai_tag, existing_notion_tags)
+                    processed_suggestions.append({
+                        "original_ai_tag": ai_tag,
+                        "existing_similar_tag": similar_existing })
+                json_output['meta']['suggested_tags_with_alternatives'] = processed_suggestions
+                logger.info(f"[ジョブ {job_id}] 既存タグとの照合結果: {processed_suggestions}")
+            else: json_output['meta']['suggested_tags_with_alternatives'] = []
+        elif json_output.get('meta'): json_output['meta']['suggested_tags_with_alternatives'] = []
+
         update_job_status_detail(job_id, "processing_complete")
         processing_jobs[job_id].update({"status": "completed", "result": json_output, "timestamp": datetime.utcnow().isoformat()})
         logger.info(f"[ジョブ {job_id}] バックグラウンド処理が正常に完了しました: {original_filename}")
@@ -295,67 +344,44 @@ async def process_pdf_in_background(
         processing_jobs[job_id].update({"status": "failed", "error": str(e), "timestamp": datetime.utcnow().isoformat()})
     finally:
         if temp_pdf_path and os.path.exists(temp_pdf_path):
-            try:
-                os.remove(temp_pdf_path)
-                logger.info(f"[ジョブ {job_id}] 一時PDFファイルを削除しました: {temp_pdf_path}")
-            except Exception as e_clean_file:
-                logger.error(f"[ジョブ {job_id}] 一時PDFファイルのクリーンアップ中にエラー: {e_clean_file}")
+            try: os.remove(temp_pdf_path)
+            except Exception as e: logger.error(f"[ジョブ {job_id}] 一時PDFファイルのクリーンアップ中にエラー: {e}")
         if temp_dir_to_clean and os.path.exists(temp_dir_to_clean):
-            try:
-                shutil.rmtree(temp_dir_to_clean)
-                logger.info(f"[ジョブ {job_id}] 一時ディレクトリを削除しました: {temp_dir_to_clean}")
-            except Exception as e_clean_dir:
-                logger.error(f"[ジョブ {job_id}] 一時ディレクトリのクリーンアップ中にエラー: {e_clean_dir}")
+            try: shutil.rmtree(temp_dir_to_clean)
+            except Exception as e: logger.error(f"[ジョブ {job_id}] 一時ディレクトリのクリーンアップ中にエラー: {e}")
         
 @app.post("/api/parse_async", status_code=status.HTTP_202_ACCEPTED, summary="PDFを非同期で解析開始")
 async def api_parse_async_endpoint(
     file: UploadFile = File(..., description="解析するPDFファイル"),
-    background_tasks: BackgroundTasks = BackgroundTasks()
-):
+    background_tasks: BackgroundTasks = BackgroundTasks() ):
     job_id = str(uuid.uuid4())
     temp_pdf_path = None
     temp_dir_for_job = None
-
     try:
         temp_dir_for_job = tempfile.mkdtemp(prefix=f"paperanalyzer_job_{job_id}_")
         original_filename = file.filename if file.filename else "uploaded.pdf"
         base_filename = os.path.basename(original_filename)
         safe_filename = "".join(c if c.isalnum() or c in ['.', '_', '-'] else '_' for c in base_filename)
-        if not safe_filename: 
-            safe_filename = f"{job_id}_uploaded.pdf"
+        if not safe_filename: safe_filename = f"{job_id}_uploaded.pdf"
         temp_pdf_path = os.path.join(temp_dir_for_job, safe_filename)
-
-        with open(temp_pdf_path, "wb") as f_out:
-            shutil.copyfileobj(file.file, f_out)
+        with open(temp_pdf_path, "wb") as f_out: shutil.copyfileobj(file.file, f_out)
         logger.info(f"ジョブID {job_id} のアップロードPDFを保存しました: {temp_pdf_path}")
-
         processing_jobs[job_id] = {
-            "status": "queued", 
-            "filename": original_filename,
+            "status": "queued", "filename": original_filename,
             "status_detail": PROGRESS_MESSAGES.get("queued"), 
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
+            "timestamp": datetime.utcnow().isoformat() }
         background_tasks.add_task(
-            process_pdf_in_background,
-            job_id,
-            temp_pdf_path,
-            original_filename,
-            file.content_type,
-            temp_dir_for_job
-        )
-        
+            process_pdf_in_background, job_id, temp_pdf_path, original_filename,
+            file.content_type, temp_dir_for_job )
         logger.info(f"ジョブ {job_id} (ファイル: {original_filename}) をバックグラウンド処理キューに追加しました。")
         return {"message": "PDF処理をバックグラウンドで開始しました。", "job_id": job_id, "status": "queued", "status_detail": PROGRESS_MESSAGES.get("queued")}
-
     except Exception as e:
         logger.error(f"非同期解析の開始中にエラーが発生しました (ファイル: {file.filename if file else '不明'}): {e}", exc_info=True)
         if temp_pdf_path and os.path.exists(temp_pdf_path): os.remove(temp_pdf_path)
         if temp_dir_for_job and os.path.exists(temp_dir_for_job): shutil.rmtree(temp_dir_for_job)
         raise HTTPException(status_code=500, detail=f"PDF処理の開始に失敗しました: {str(e)}")
     finally:
-        if file:
-            await file.close()
+        if file: await file.close()
 
 @app.get("/api/parse_status/{job_id}", summary="指定されたジョブIDの解析状況を取得")
 async def get_parse_status_endpoint(job_id: str):
@@ -364,13 +390,12 @@ async def get_parse_status_endpoint(job_id: str):
         logger.warning(f"存在しないジョブIDがリクエストされました: {job_id}")
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={"job_id": job_id, "status": "not_found", "error": "Job ID not found.", "status_detail": "ジョブが見つかりません。"}
-        )
+            content={"job_id": job_id, "status": "not_found", "error": "Job ID not found.", "status_detail": "ジョブが見つかりません。"} )
     return job
 
 class SummarizeRequest(BaseModel):
     text: str = Field(..., description="要約するテキスト")
-    max_tokens: Optional[int] = Field(1000, description="生成する最大トークン数")
+    max_tokens: Optional[int] = Field(15000, description="生成する最大トークン数")
 
 @app.post("/summarize", summary="指定されたテキストを要約")
 async def summarize(req: SummarizeRequest):
@@ -379,7 +404,6 @@ async def summarize(req: SummarizeRequest):
         raise HTTPException(status_code=503, detail="要約サービスは現在利用できません。")
     if not req.text or not req.text.strip():
         raise HTTPException(status_code=400, detail="要約するテキストが必要です。")
-
     system_prompt_section = """あなたは、医療および保健分野の学術論文を専門とする高度なAIアシスタントです。提供された論文のセクション（原文）を読み解き、以下の指示に従って日本語で要約を生成してください。指示: 1. 原文の内容を正確に捉え、主要なポイントを抽出してください。2. 関連する現在の医学的・科学的な潮流や背景文脈を考慮し、必要であればそれを簡潔に補足情報として含めてください。ただし、原文にない情報を過度に推測したり、付け加えたりしないでください。3. もし原文中に引用や参考文献への言及（例: [1], (Smith et al., 2020) など）があれば、それらを省略せず、要約文中の対応する箇所に適切に含めてください。4. **重要: 生成される要約文は、`<p>`, `<br>`, `<em>`, `<strong>` を含む一切のHTMLタグを含まず、純粋なプレーンテキストとしてください。段落は、段落間に1つの空行を挿入することで表現してください。箇条書きが適切な場合は、各項目の先頭に「・」や「1. 」のような記号を使用し、HTMLのリストタグ (`<ul>`, `<ol>`, `<li>`) は使用しないでください。** 5. 専門用語は保持しつつも、可能な範囲で平易な表現を心がけてください。6. もし原文中に統計解析手法（例: t検定, ANOVA, カイ二乗検定, ロジスティック回帰分析など）に関する記述があれば、その手法がどのような目的で使われるものか、ごく簡潔な補足説明（例：t検定は2群間の平均値の差を比較する手法）を括弧書きなどで加えてください。ただし、補足は10～30字程度に留め、冗長にならないようにしてください。7. 要約は、客観的かつ中立的な視点を保ってください。"""
     user_prompt_section = f"""以下の論文セクションを上記の指示に従って、HTMLタグを一切含まず、段落間は空行で区切るプレーンテキスト形式で要約してください。\n\n---原文ここから---\n{req.text}\n---原文ここまで---\n\n要約（日本語、HTMLタグなし、段落間は空行）:"""
     try:
@@ -387,9 +411,7 @@ async def summarize(req: SummarizeRequest):
         resp = sync_openai_client.chat.completions.create(
             model=OPENAI_SUMMARY_MODEL,
             messages=[{"role": "system", "content": system_prompt_section}, {"role": "user", "content": user_prompt_section}],
-            max_tokens=req.max_tokens,
-            temperature=0.2,
-        )
+            max_tokens=req.max_tokens, temperature=0.2, )
         summary_content = resp.choices[0].message.content.strip()
         logger.info(f"セクション要約を生成しました (生成長: {len(summary_content)})")
         return {"summary": summary_content}
@@ -411,12 +433,8 @@ async def tts(req: TTSRequest):
     try:
         logger.info(f"TTSリクエストを受信しました (テキスト長: {len(req.text)})")
         audio_response = polly.synthesize_speech(
-            Text=req.text,
-            OutputFormat=AWS_POLLY_OUTPUT_FORMAT,
-            VoiceId=AWS_POLLY_VOICE_ID_JA,
-            Engine=AWS_POLLY_ENGINE,
-            LanguageCode='ja-JP'
-        )
+            Text=req.text, OutputFormat=AWS_POLLY_OUTPUT_FORMAT, VoiceId=AWS_POLLY_VOICE_ID_JA,
+            Engine=AWS_POLLY_ENGINE, LanguageCode='ja-JP' )
         if "AudioStream" in audio_response:
             logger.info("TTS音声ストリームの生成に成功しました。")
             return StreamingResponse(io.BytesIO(audio_response["AudioStream"].read()), media_type=f"audio/{AWS_POLLY_OUTPUT_FORMAT}")
@@ -454,23 +472,14 @@ async def generate_short_abstract_for_notion(abstract_text: str) -> Optional[str
         logger.info(f"Notion用短縮アブストラクトをリクエスト中 (モデル: {OPENAI_SUMMARY_MODEL}, アブストラクト先頭: {abstract_text[:50]}...)")
         system_prompt_short = "You are a helpful assistant. Summarize the following abstract into one or two concise Japanese sentences."
         user_prompt_short = f"Abstract:\n\"\"\"\n{abstract_text}\n\"\"\"\n\nOne to two sentence Japanese summary:"
-        
         logger.debug(f"OpenAI 短縮要約 - モデル: {OPENAI_SUMMARY_MODEL}")
         logger.debug(f"OpenAI 短縮要約 - システムプロンプト: {system_prompt_short[:100]}")
         logger.debug(f"OpenAI 短縮要約 - ユーザープロンプト (先頭100文字): {user_prompt_short[:100]}")
-
         start_time_openai_short_abs = time.time()
         response = await openai_aclient.chat.completions.create(
             model=OPENAI_SUMMARY_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt_short},
-                {"role": "user", "content": user_prompt_short}
-            ],
-            max_tokens=200,
-            temperature=0.3,
-            n=1,
-            stop=None,
-        )
+            messages=[ {"role": "system", "content": system_prompt_short}, {"role": "user", "content": user_prompt_short} ],
+            max_tokens=200, temperature=0.3, n=1, stop=None, )
         summary_text = response.choices[0].message.content.strip()
         end_time_openai_short_abs = time.time()
         logger.info(f"Notion用短縮アブストラクトを生成しました。処理時間: {end_time_openai_short_abs - start_time_openai_short_abs:.2f}秒")
@@ -484,25 +493,33 @@ async def save_to_notion_endpoint(request_data: NotionPageRequest):
     if not notion_utils_client or not NOTION_DB_ID_FROM_UTILS:
         logger.error("NotionクライアントまたはデータベースIDが設定されていません。")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Notion連携が設定されていません。")
+   
+    # ★★★ 新しいIDを採番 ★★★
+    current_max_id = 0
+    try:
+        # 同期関数なのでバックグラウンドで実行
+        current_max_id = await run_in_threadpool(get_current_max_id_from_notion, id_property_name="ID") # IDプロパティ名を指定
+    except Exception as e_get_id:
+        logger.error(f"Notionから現在の最大IDの取得中にエラー: {e_get_id}", exc_info=True)
+        # エラーが発生しても、IDなしで続行するか、エラーを返すか選択
+        # ここではIDなし（またはデフォルトID）で続行する代わりにエラーを返すことも検討
     
+    new_page_id = current_max_id + 1
+    logger.info(f"新しいNotionページのIDとして {new_page_id} を採番しました。")
+
     short_abstract_text_for_notion: Optional[str] = None
     if request_data.original_abstract:
         short_abstract_text_for_notion = await generate_short_abstract_for_notion(request_data.original_abstract)
     
     notion_page_data = {
-        "title": request_data.title,
-        "authors": request_data.authors,
-        "journal": request_data.journal,
-        "published_date": request_data.published_date,
-        "doi": request_data.doi,
+        "new_id": new_page_id, "title": request_data.title, "authors": request_data.authors, "journal": request_data.journal,
+        "published_date": request_data.published_date, "doi": request_data.doi,
         "pdf_filename": request_data.pdf_filename, 
         "pdf_google_drive_url": request_data.pdf_google_drive_url,
         "short_abstract": short_abstract_text_for_notion,
-        "tags": request_data.tags,
-        "rating": request_data.rating,
-        "memo": request_data.memo,
+        "tags": request_data.tags, "rating": request_data.rating, "memo": request_data.memo,
     }
-    logger.info(f"Notionへ保存中: {request_data.title[:50]}...")
+    logger.info(f"Notionへ保存中: {request_data.title[:50]}... (ID: {new_page_id})")
     start_time_notion_save = time.time()
     try:
         result = await run_in_threadpool(create_notion_page, **notion_page_data)

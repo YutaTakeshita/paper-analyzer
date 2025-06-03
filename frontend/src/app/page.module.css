@@ -610,6 +610,105 @@
   background-color: #e0e0e0;
 }
 
+/* -------------------------------------------------- */
+/* Suggested Tags Styling (AI Tag Suggestions)        */
+/* -------------------------------------------------- */
+.suggestedTagsArea {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--app-border); /* 区切り線は少し控えめに */
+}
+
+.suggestedTagsTitle {
+  font-size: 0.9em;
+  color: var(--app-secondary); /* 通常のセカンダリテキスト色 */
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+.suggestionGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem; /* ボタン間の間隔を少し調整 */
+  margin-bottom: 0.6rem;
+}
+
+/* 提案タグボタンの基本スタイル (モダンな感じに) */
+.suggestedTagButton {
+  background-color: var(--app-card-background); 
+  color: var(--app-foreground);            
+  border: 1px solid var(--app-border);      
+  padding: 0.4rem 0.9rem;                  
+  border-radius: 16px;                     
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: all 0.2s ease-out; 
+  font-weight: 500;
+  line-height: 1.4;
+  box-shadow: var(--shadow-xs); 
+  display: inline-flex; 
+  align-items: center;  
+  gap: 0.4em;          
+}
+
+.suggestedTagButton strong {
+  font-weight: 600;
+  color: inherit; 
+}
+
+/* ★★★ タグタイプレーベルのスタイル ★★★ */
+.tagTypeMarker {
+  font-size: 0.8em;
+  color: var(--app-secondary);
+  margin-left: 0.4em;
+  /* font-style: italic; */
+  font-weight: normal; /* 通常の太さにする */
+}
+
+.aiCandidateText {
+  font-size: 0.9em; /* AI候補テキストのサイズ */
+  color: var(--app-secondary); /* 通常のセカンダリテキスト色 */
+  margin-left: 0.3em;
+  /* font-style: italic; */
+}
+
+.suggestedTagButton:hover:not(:disabled) {
+  background-color: rgba(var(--app-primary-rgb), 0.1); 
+  border-color: var(--app-primary);
+  color: var(--app-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm); 
+}
+
+.suggestedTagButton:disabled { /* 既に選択済みのタグに対する提案ボタン */
+  background-color: var(--app-border);
+  color: var(--app-secondary);
+  opacity: 0.6;
+  cursor: not-allowed;
+  border-color: transparent;
+  transform: none;
+  box-shadow: none;
+}
+
+/* AI提案タグを「新規として追加」する場合の代替ボタンスタイル */
+.suggestedTagButtonAlt { 
+  /* .suggestedTagButton のスタイルを基本とし、必要なら微調整 */
+  /* 例えば、少しだけ背景色を変えるなど */
+  background-color: rgba(var(--app-card-background), 0.9);
+}
+.suggestedTagButtonAlt:hover:not(:disabled) {
+  background-color: rgba(var(--app-secondary-rgb, 113, 128, 150), 0.15);
+  border-color: var(--app-secondary-hover);
+  color: var(--app-secondary-hover);
+}
+
+/* タグ提案中のミニローディングメッセージ用 */
+.infoMini {
+  font-size: 0.8em;
+  color: var(--app-secondary);
+  font-style: italic;
+  margin-top: 0.5rem;
+}
 
 /* -------------------------------------------------- */
 /* Notion Save Section */
@@ -687,6 +786,23 @@ a.secondary:hover { background-color: rgba(var(--app-primary-rgb), 0.1); border-
     border-color: var(--app-foreground);
   }
   .tagInputField, .memoTextarea { background-color: var(--app-card-background); }
+
+  .suggestedTagButton {
+    background-color: rgba(var(--app-foreground-rgb), 0.05);
+    border-color: rgba(var(--app-foreground-rgb), 0.2);
+  }
+  .suggestedTagButton:hover:not(:disabled) {
+    background-color: rgba(var(--app-primary-rgb), 0.2);
+    border-color: var(--app-primary);
+    color: var(--app-primary);
+  }
+  .suggestedTagButton:disabled {
+    background-color: rgba(var(--app-border-rgb), 0.3);
+    opacity: 0.5;
+  }
+  .tagTypeMarker {
+    color: var(--app-secondary-hover); /* ダークモードでのラベル色調整 */
+  }
 }
 
 @media (max-width: 1280px) { }

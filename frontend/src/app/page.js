@@ -7,6 +7,8 @@ import styles from './page.module.css';
 
 const logger = console;
 const POLLING_INTERVAL = 3000;
+// ★★★ 固定のNotionデータベースURLを定数として定義 ★★★
+const FIXED_NOTION_DATABASE_URL = "https://www.notion.so/1f007614621080fd839dd0410d9ff901?v=1f0076146210819ba94b000ce6a933c0";
 
 export default function Home() {
   const [file, setFile] = useState(null);
@@ -37,9 +39,12 @@ export default function Home() {
   const [userRating, setUserRating] = useState(null);
   const [userMemo, setUserMemo] = useState("");
 
+  const [enhancedSuggestedTags, setEnhancedSuggestedTags] = useState([]);
+  const [loadingSuggestedTags, setLoadingSuggestedTags] = useState(false);
+
   const [parsingJobId, setParsingJobId] = useState(null);
-  const [parsingStatusMessage, setParsingStatusMessage] = useState("");
-  const [detailedParsingMessage, setDetailedParsingMessage] = useState(""); // 詳細進捗用
+  const [parsingStatusMessage, setParsingStatusMessage] = useState(""); // メインの進捗・ステータスメッセージ用
+  const [detailedParsingMessage, setDetailedParsingMessage] = useState(""); // バックエンドからの詳細な処理ステップメッセージ
 
   const [isPotentiallyFirstLoad, setIsPotentiallyFirstLoad] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -114,11 +119,11 @@ export default function Home() {
         const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/parse_status/${parsingJobId}`);
         const jobData = res.data;
         
-        if (jobData.status_detail) { // 詳細ステータスがあればセット
+        if (jobData.status_detail) {
             setDetailedParsingMessage(jobData.status_detail);
         } else if (jobData.status === 'queued') {
             setDetailedParsingMessage("解析キューに追加されました。");
-        } else if (jobData.status === 'processing' && !jobData.status_detail) { // status_detailがない場合のデフォルト
+        } else if (jobData.status === 'processing' && !jobData.status_detail) {
             setDetailedParsingMessage("解析処理を実行中です...");
         }
         
@@ -132,17 +137,16 @@ export default function Home() {
         }
         
         if (jobData.status === 'completed') {
-          // ★★★★★ ここにログを追加 ★★★★★
-          // console.log("[fetchJobStatus] Backend job COMPLETED. JobData:", JSON.stringify(jobData, null, 2));
-          // ★★★★★ ここまで ★★★★★          
           setShowProcessingCompleteMessage(true); 
           setIsPotentiallyFirstLoad(false);
           setShowInitialLoadMessage(false);
           setMeta(jobData.result?.meta || null);
+          setSections(jobData.result?.sections || null);
           setReferences(jobData.result?.references || null);
           setFiguresData(jobData.result?.figures || []);
           setTablesData(jobData.result?.tables || []);
           setGoogleDriveUrl(jobData.result?.google_drive_url || null);
+          setEnhancedSuggestedTags(jobData.result?.meta?.suggested_tags_with_alternatives || []);
           if (jobData.result?.sections && Array.isArray(jobData.result.sections)) {
             const processedSections = jobData.result.sections.map((sec, index) => ({
               id: `section-${index}-${(sec.head || `untitled-section-${index}`).replace(/\s+/g, '-')}`,
@@ -157,11 +161,9 @@ export default function Home() {
             processedSections.forEach(sec => { initialExpandedState[sec.id] = false; });
             setExpanded(initialExpandedState);
           } else {
-            setError('解析結果のセクション形式が正しくありません。');
             setSections(null);
           }
           setStatus('done'); 
-          console.log("[fetchJobStatus] Frontend status SET TO 'done'"); // ★★★ デバッグログ ★★★
         } else if (jobData.status === 'failed') {
           setError(`解析処理に失敗しました: ${jobData.error || '不明なエラー'}`);
           setIsPotentiallyFirstLoad(false);
@@ -170,6 +172,7 @@ export default function Home() {
           setParsingJobId(null); 
         } else if (jobData.status === 'not_found') {
             setError(`ジョブ (ID: ${parsingJobId}) が見つかりませんでした。`);
+            setDetailedParsingMessage("指定されたジョブが見つかりません。");
             setStatus('failed');
             setParsingJobId(null);
         } else if (jobData.status === 'queued' || jobData.status === 'processing') {
@@ -178,6 +181,8 @@ export default function Home() {
             }
         } else {
             logger.warn("Unknown job status received from backend:", jobData.status);
+            setError("不明な処理ステータスを受信しました。");
+            setDetailedParsingMessage("不明なステータスです。");
             setStatus('failed');
             setParsingJobId(null);
         }
@@ -188,11 +193,11 @@ export default function Home() {
             pollingIntervalRef.current = null;
         }
         if (err.response && err.response.status === 404) {
-          setError(`ジョブ (ID: ${parsingJobId}) の結果取得に失敗しました (見つかりません)。`);
-          setDetailedParsingMessage("指定されたジョブが見つかりません。");
+          setError(`ジョブ (ID: ${parsingJobId}) の状況確認に失敗しました (APIエラー 404)。`);
+          setDetailedParsingMessage("ジョブの状況を確認できません (404)。");
         } else {
           setError("処理状況の確認中に予期せぬエラーが発生しました。");
-          setDetailedParsingMessage("状況確認エラー。");
+          setDetailedParsingMessage("状況確認中に通信エラーが発生しました。");
         }
         setStatus('failed');
         setParsingJobId(null); 
@@ -219,44 +224,47 @@ export default function Home() {
         pollingIntervalRef.current = null; 
       }
     };
-  }, [parsingJobId, status]); // elapsedTime を削除し、fetchJobStatusが常に最新のelapsedTimeを参照するように変更
+  }, [parsingJobId, status]); // 依存配列を絞り込み
 
 
   // ★★★ parsingStatusMessage 更新専用の useEffect (修正) ★★★
   useEffect(() => {
     if (status === 'queued' || status === 'processing') {
-      let message = detailedParsingMessage || `処理中 (${originalFileName || 'ファイル名不明'})`; // 詳細メッセージがあればそれを優先
-      if (elapsedTime > 0) { // elapsedTimeが0より大きい場合のみ経過時間を追加
-        message += ` - ${elapsedTime}秒経過...`;
+      // detailedParsingMessage があればそれを優先、なければデフォルトの処理中メッセージ
+      let message = detailedParsingMessage || `処理中 (${originalFileName || 'ファイル名不明'})`;
+      if (elapsedTime > 0 && !showInitialLoadMessage) { 
+        message += ` - 約${elapsedTime}秒経過...`;
       }
       setParsingStatusMessage(message);
     } else if (status === 'done') {
-      if (showProcessingCompleteMessage) {
+      if (showProcessingCompleteMessage) { // 「結果を処理中です」の一時的なメッセージ
         setParsingStatusMessage("解析が完了しました。結果を処理中です...");
-      } else {
-        // setParsingStatusMessage("解析完了");
+        setDetailedParsingMessage(""); // この期間は詳細メッセージは不要
+      } else { // 結果表示がメインになったら、ステータスメッセージはクリア
+        setParsingStatusMessage(""); 
+        setDetailedParsingMessage("");
       }
     } else if (status === 'failed') {
-      // detailedParsingMessage にエラー詳細が入っているか、error state を使う
-      const errorMessage = detailedParsingMessage && detailedParsingMessage.startsWith("エラー:") ? detailedParsingMessage :
-                           (error ? `エラー: ${String(error).split('\n')[0]}` : "解析処理に失敗しました。");
-      setParsingStatusMessage(errorMessage);
+      // エラーメッセージをセット (detailedParsingMessage に具体的なエラーが入ることを期待)
+      setParsingStatusMessage(detailedParsingMessage || (error ? `エラー: ${String(error).split('\n')[0]}` : "解析処理に失敗しました。"));
+      if (!detailedParsingMessage && error) setDetailedParsingMessage(""); // 重複を避ける
     } else if (!parsingJobId && status !== 'file_selected') {
-        setParsingStatusMessage(""); // アイドル状態
-        setDetailedParsingMessage(""); // アイドル時は詳細メッセージもクリア
+        setParsingStatusMessage("");
+        setDetailedParsingMessage("");
     } else if (status === 'file_selected') {
         setParsingStatusMessage("PDFファイルが選択されました。「PDFを解析」ボタンを押してください。");
         setDetailedParsingMessage("");
     }
-  }, [status, elapsedTime, originalFileName, detailedParsingMessage, error, parsingJobId, showProcessingCompleteMessage]);
+  // detailedParsingMessage も依存配列に追加
+  }, [status, elapsedTime, originalFileName, detailedParsingMessage, error, parsingJobId, showInitialLoadMessage, showProcessingCompleteMessage]);
+
 
   useEffect(() => {
     if (status === 'done' && meta && showProcessingCompleteMessage) {
       const clearMsgTimeout = setTimeout(() => {
         setShowProcessingCompleteMessage(false);
-        setParsingStatusMessage(""); // ★★★ ここで一緒にクリア ★★★
-        setDetailedParsingMessage(""); // 詳細メッセージもクリア
-      }, 2000); 
+        // parsingStatusMessage と detailedParsingMessage は上のuseEffectでクリアされる
+      }, 2000); // 2秒後に「結果を処理中です」メッセージをクリア
       return () => clearTimeout(clearMsgTimeout);
     }
   }, [status, meta, showProcessingCompleteMessage]);
@@ -267,8 +275,7 @@ export default function Home() {
     if (!keepFile) {
         const fileInput = document.querySelector('input[type="file"]');
         if (fileInput) fileInput.value = "";
-        setFile(null);
-        setOriginalFileName("");
+        setFile(null); setOriginalFileName("");
     }
     setStatus(null); setError(null); setMeta(null); setSections(null);
     setReferences(null); setFiguresData([]); setTablesData([]);
@@ -276,9 +283,9 @@ export default function Home() {
     setSummaries({}); setLoadingSummaries({}); setAudioUrls({}); setLoadingAudio({});
     setExpanded({}); setNotionStatus(null); setNotionError(null); setNotionPageUrl(null);
     setUserTags([]); setCurrentTagInput(""); setUserRating(null); setUserMemo("");
+    setEnhancedSuggestedTags([]); setLoadingSuggestedTags(false);
     setParsingJobId(null); 
-    setParsingStatusMessage("");
-    setDetailedParsingMessage("");
+    setParsingStatusMessage(""); setDetailedParsingMessage("");
     setIsPotentiallyFirstLoad(false); setShowInitialLoadMessage(false);
     setShowProcessingCompleteMessage(false); setElapsedTime(0);
     if (pollingIntervalRef.current) { clearInterval(pollingIntervalRef.current); pollingIntervalRef.current = null; }
@@ -308,7 +315,7 @@ export default function Home() {
       if (res.data && res.data.job_id) {
         setParsingJobId(res.data.job_id); 
         setStatus(res.data.status || 'queued');
-        if(res.data.status_detail) setDetailedParsingMessage(res.data.status_detail); // 初期詳細メッセージ
+        if(res.data.status_detail) setDetailedParsingMessage(res.data.status_detail);
       } else {
         throw new Error("バックエンドからジョブIDが返されませんでした。");
       }
@@ -397,7 +404,9 @@ export default function Home() {
       const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/save_to_notion`, notionData);
       if (response.data.success) {
         setNotionStatus('saved');
-        setNotionPageUrl(response.data.url || NOTION_TARGET_URL); 
+        // ★★★ バックエンドから返される個別ページURLの代わりに、固定のDB URLを設定 ★★★
+        setNotionPageUrl(FIXED_NOTION_DATABASE_URL); 
+        // setNotionPageUrl(response.data.url || NOTION_TARGET_URL); 
       } else {
         throw new Error(response.data.error || "Notionへの保存レスポンスが不正です。");
       }
@@ -419,6 +428,13 @@ export default function Home() {
     }
   };
   const removeTag = (tagToRemove) => setUserTags(userTags.filter(tag => tag !== tagToRemove));
+
+  const addSuggestedTag = (tagToAdd, existingSimilarTag = null) => {
+    const finalTag = existingSimilarTag || tagToAdd;
+    if (finalTag && !userTags.includes(finalTag)) {
+      setUserTags(prevTags => [...prevTags, finalTag]);
+    }
+  };
 
   const renderSection = (sec, isLastContentSection) => {
     const { id: sectionId, head: name, text: htmlText, figures: sectionFigures, level, subsections } = sec;
@@ -489,10 +505,9 @@ export default function Home() {
           <h1>PapeLog</h1>
         </div>
         <p className={styles.description}>
-          PDF論文をアップロードするだけ！AIがパッと解析、論文構造をまるごとキャッチ。<strong>PDFはあなたのGoogle Driveにタイトル名で自動保存！</strong><br />
-          重要なポイントはAI要約で時短、音声読み上げでスキマ時間も活用！<br />
-          「参考になった度」評価、タグ、ひらめいたメモ、そして<strong>Drive上のPDFへのリンク</strong>も一緒に、読んだ論文をNotionデータベースにしっかり記録＆管理！<br />
-          あなたの「読んだ」を価値ある「記録」に。
+          PDF論文をアップロードすれば、AIが構造解析しGoogle Driveへ賢く保存。<br/>さらに、<strong>AIがタグ候補を自動提案！</strong><br />
+          AI要約や音声読み上げで時短学習、評価・メモ・タグと共にNotionへ一元管理。<br />
+          あなたの「読んだ」を、整理された「知識」へ深化させます。
         </p>
       </div>
 
@@ -504,32 +519,26 @@ export default function Home() {
         {originalFileName && <p className={styles.fileName}>選択中のファイル: {originalFileName}</p>}
       </form>
 
-      {/* ★★★ 初回起動メッセージ ★★★ */}
-      {/* isPotentiallyFirstLoad と elapsedTime に基づいて表示制御 */}
-      {showInitialLoadMessage && (status === 'uploading' || status === 'queued' || status === 'processing') && (
-        <p className={styles.infoMessage}> {/* 中央揃えの情報メッセージスタイル */}
+      {/* ★★★ 初回起動メッセージ (復活・修正) ★★★ */}
+      {showInitialLoadMessage && isParsingInProgress && ( // isParsingInProgressも条件に追加
+        <p className={styles.infoMessage}>
           初回アクセス時はサーバーの準備に時間がかかることがあります (最大2～3分程度)。しばらくお待ちください。
           {elapsedTime > 0 && ` (約${elapsedTime}秒経過)`}
         </p>
       )}
       
-      {/* ★★★ 主要なステータスメッセージ (処理中、完了、失敗) ★★★ */}
-      {/* 初回ロードメッセージが表示されておらず、かつ parsingStatusMessage がある場合に表示 */}
-      {!showInitialLoadMessage && parsingStatusMessage && (
-        <p 
-          // status の値に応じて、.statusMessage または .error スタイルを動的に適用
-          className={
-            status === 'failed' ? styles.error : 
-            (status === 'done' && showProcessingCompleteMessage) ? styles.infoMessage : // 完了直後のメッセージもinfoMessageスタイル
-            styles.statusMessage // 通常の処理中、または完了後の通常メッセージ
-          } 
-          dangerouslySetInnerHTML={{ __html: parsingStatusMessage.replace(/\n/g, '<br />') }} 
-        />
+      {/* ★★★ ステータスBOXに表示を統一 (詳細進捗＋経過時間 または エラー/完了メッセージ) ★★★ */}
+      {!showInitialLoadMessage && parsingStatusMessage && (status === 'queued' || status === 'processing' || status === 'failed' || (status === 'done' && showProcessingCompleteMessage)) && (
+        <div className={styles.statusBox}> {/* 既存のステータスBOXのスタイルを想定 */}
+          <p 
+            className={status === 'failed' ? styles.error : styles.statusMessage} 
+            dangerouslySetInnerHTML={{ __html: parsingStatusMessage.replace(/\n/g, '<br />') }} 
+          />
+        </div>
       )}
 
       {status === 'done' && meta && (
         <>
-          {/* ... (結果表示部分は変更なし) ... */}
           <section className={`${styles.section} ${styles.metaSection}`}>
             {meta.title && <h2>{meta.title}</h2>}
             <p><strong>著者:</strong> <span>{meta.authors && meta.authors.length > 0 ? meta.authors.join(', ') : 'N/A'}</span></p>
@@ -552,13 +561,14 @@ export default function Home() {
               </div>
             )}
           </section>
+
           <section id="notion-save-area" className={`${styles.section} ${styles.notionSaveSection}`}>
             <h3>Notionに保存</h3>
             <div className={styles.notionSaveContainer}>
               <div className={styles.inputRow}>
                 <div className={styles.tagInputContainer}>
                   <label htmlFor="notionTags">タグ (Enterまたはカンマで追加):</label>
-                  <input type="text" id="notionTags" value={currentTagInput} onChange={handleTagInputChange} onKeyDown={handleTagInputKeyDown} placeholder="例: 機械学習, 論文レビュー" className={styles.tagInputField}/>
+                  <input type="text" id="notionTags" value={currentTagInput} onChange={handleTagInputChange} onKeyDown={handleTagInputKeyDown} placeholder="例: 看護介入, 質的研究, 疼痛管理, QALY" className={styles.tagInputField}/>
                   <div className={styles.tagsPreview}>
                     {userTags.map(tag => (
                       <span key={tag} className={styles.tagItem}>
@@ -567,7 +577,70 @@ export default function Home() {
                       </span>
                     ))}
                   </div>
-                </div>
+                                  
+                  {/* ★★★ AIによる提案タグの表示と選択 (UI修正) ★★★ */}
+                  {loadingSuggestedTags && <p className={styles.infoMini}>タグを提案中です...</p>}
+                  {enhancedSuggestedTags && enhancedSuggestedTags.length > 0 && !loadingSuggestedTags && (
+                    <div className={styles.suggestedTagsArea}>
+                      <p className={styles.suggestedTagsTitle}>提案タグ (クリックで追加):</p>
+                      {enhancedSuggestedTags.map((suggestion, index) => {
+                        const aiTag = suggestion.original_ai_tag;
+                        const existingTag = suggestion.existing_similar_tag;
+                        // 大文字・小文字を無視してAI提案タグと既存タグが実質的に同じ文字列か判定
+                        const isEssentiallySame = existingTag && aiTag.toLowerCase() === existingTag.toLowerCase();
+
+                        return (
+                          <div key={`suggestion-group-${index}`} className={styles.suggestionGroup}>
+                            {/* メインの提案ボタン (既存タグがあればそれを優先表示、なければAI提案タグを表示) */}
+                            <button
+                              className={styles.suggestedTagButton}
+                              onClick={() => addSuggestedTag(existingTag || aiTag)} // 既存タグがあればそれを、なければAIタグを追加
+                              disabled={userTags.includes(existingTag || aiTag)}
+                              title={
+                                existingTag 
+                                  ? `既存のタグ「${existingTag}」${!isEssentiallySame ? ` (AI提案: ${aiTag})` : ''} を追加します`
+                                  : `新しいタグ「${aiTag}」として追加します`
+                              }
+                            >
+                              {existingTag ? (
+                                <>
+                                  <strong>{existingTag}</strong> {/* 既存タグを太字で表示 */}
+                                  <span className={styles.tagTypeMarker}>[既存]</span>
+                                  {/* AI提案と既存タグが異なる場合のみ、AI提案を括弧で補足 */}
+                                  {!isEssentiallySame && (
+                                    <span className={styles.aiCandidateText}> (AI候補: {aiTag})</span>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  {aiTag} {/* 既存タグがなければAI提案タグを表示 */}
+                                  <span className={styles.tagTypeMarker}>[AI提案]</span>
+                                </>
+                              )}
+                              <span style={{ marginLeft: '0.3em' }}>＋</span>
+                            </button>
+
+                            {/* AI提案タグを「新規タグ」として明示的に追加するボタン */}
+                            {/* (既存タグがあり、かつAI提案タグと既存タグが異なる場合のみ表示) */}
+                            {existingTag && !isEssentiallySame && (
+                               <button
+                                  className={`${styles.suggestedTagButton} ${styles.suggestedTagButtonAlt}`}
+                                  onClick={() => addSuggestedTag(aiTag)} // AI提案タグを新規として追加
+                                  disabled={userTags.includes(aiTag)}
+                                  title={`AIが提案したタグ「${aiTag}」を新しいタグとして追加します`}
+                               >
+                                 {aiTag}
+                                 <span className={styles.tagTypeMarker}>[新規として採用]</span>
+                                 <span style={{ marginLeft: '0.3em' }}>＋</span>
+                               </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>     
+
                 <div className={styles.memoInputContainer}>
                   <label htmlFor="notionMemo">メモ (任意):</label>
                   <textarea id="notionMemo" value={userMemo} onChange={(e) => setUserMemo(e.target.value)} placeholder="この論文に関するメモを入力..." rows={3} className={styles.memoTextarea}/>
