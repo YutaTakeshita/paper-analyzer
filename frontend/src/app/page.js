@@ -502,7 +502,6 @@ export default function Home() {
     console.log('[Home Render] meta:', meta);
     console.log('[Home Render] meta?.title:', meta?.title);
     console.log('[Home Render] notionStatus:', notionStatus);
-    const isParsingInProgress = status === 'uploading' || status === 'queued' || status === 'processing';
     console.log('[Home Render] isParsingInProgress:', isParsingInProgress);
     const notionButtonDisabled = notionStatus === 'saving' || !meta || !meta.title || isParsingInProgress;
     console.log('[Home Render] Calculated disabled:', notionButtonDisabled);
