@@ -128,6 +128,7 @@ def get_current_max_id_from_notion(id_property_name: str = "ID") -> int:
     Returns:
         int: 現在の最大ID。ページが存在しないかIDプロパティがなければ0を返す。
     """
+    logger.info(f"▶ get_current_max_id_from_notion を呼び出しました。プロパティ名 = {id_property_name}")
     if not notion_client_instance or not NOTION_DATABASE_ID:
         logger.warning("Notion client or Database ID not configured. Cannot fetch max ID.")
         return 0 # フォールバックとして0を返す
@@ -169,6 +170,7 @@ def get_current_max_id_from_notion(id_property_name: str = "ID") -> int:
                 page_size=100 # 一度に取得するページ数 (最大100)
             )
             results = query_response.get("results", [])
+            logger.info(f"  • this batch has {len(results)} pages. has_more={query_response.get('has_more')}")
             for page in results:
                 properties = page.get("properties", {})
                 id_prop_value = properties.get(id_property_name, {}).get("number")
@@ -188,7 +190,7 @@ def get_current_max_id_from_notion(id_property_name: str = "ID") -> int:
         logger.error(f"Notion API error while fetching max ID: {e.status} - {e.code} - {e.message}", exc_info=True)
     except Exception as e:
         logger.error(f"Unexpected error while fetching max ID from Notion: {e}", exc_info=True)
-        
+    logger.info(f"▶ get_current_max_id_from_notion: 集計した ID 値一覧 = {all_pages_ids}")
     return max_id_found
 
 # create_notion_page 関数の引数に new_id を追加

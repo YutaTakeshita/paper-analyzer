@@ -34,6 +34,7 @@ from app.notion_utils import create_notion_page
 from app.notion_utils import notion_client_instance as notion_utils_client
 from app.notion_utils import NOTION_DATABASE_ID as NOTION_DB_ID_FROM_UTILS
 from app.notion_utils import get_all_existing_tags_from_notion
+from app.notion_utils import get_current_max_id_from_notion
 
 # Google Drive連携用ユーティリティとテキストユーティリティのインポート
 from app.gdrive_utils import get_gdrive_service_from_json_key, upload_file_to_drive
